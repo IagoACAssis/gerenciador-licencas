@@ -29,7 +29,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
           <tbody>
             {clientes.map((cliente) => (
               <tr key={cliente.id}>
-                <td>{cliente.nome}</td>
+                <td><Link href={`/clientes/${cliente.id}`}>{cliente.nome}</Link></td>
                 <td>{cliente.email}</td>
                 <td>
                   <Link href={`/clientes/${cliente.id}/editar`}>Editar</Link>

@@ -2,7 +2,7 @@
 // casos de uso do núcleo forem implementados. Depois de alterar este arquivo,
 // gere a migração com `pnpm db:gerar` e faça commit dela.
 import { sql } from "drizzle-orm";
-import { integer, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const produtos = pgTable("produtos", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -35,4 +35,41 @@ export const clientes = pgTable(
     // Dois Clientes não podem ter o mesmo e-mail na Instância, sem diferenciar maiúsculas.
     uniqueIndex("clientes_email_unico").on(sql`lower(${tabela.email})`),
   ],
+);
+
+export const licencas = pgTable(
+  "licencas",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    produtoId: integer("produto_id").notNull().references(() => produtos.id),
+    clienteId: integer("cliente_id").notNull().references(() => clientes.id),
+    /** SHA-256 (hex) da Chave de licença normalizada. A Chave em si nunca é guardada (ADR-0003). */
+    hashChave: text("hash_chave").notNull(),
+    /** Primeiros caracteres da Chave, sem hífen, para identificar a Licença no painel. */
+    prefixoChave: text("prefixo_chave").notNull(),
+    /** Vazia = Licença perpétua. */
+    validaAte: timestamp("valida_ate", { withTimezone: true }),
+    /** Vazio = segue o Limite de ativações padrão atual do Produto. */
+    limiteAtivacoes: integer("limite_ativacoes"),
+    emitidaEm: timestamp("emitida_em", { withTimezone: true }).notNull(),
+  },
+  (tabela) => [
+    uniqueIndex("licencas_hash_chave_unico").on(tabela.hashChave),
+    uniqueIndex("licencas_prefixo_chave_unico").on(tabela.prefixoChave),
+    index("licencas_produto").on(tabela.produtoId),
+    index("licencas_cliente").on(tabela.clienteId),
+  ],
+);
+
+/** Histórico da Licença: um registro por evento, com os dados do evento em JSON. */
+export const eventosLicenca = pgTable(
+  "eventos_licenca",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    licencaId: integer("licenca_id").notNull().references(() => licencas.id),
+    tipo: text("tipo").notNull(),
+    dados: jsonb("dados").notNull(),
+    ocorridoEm: timestamp("ocorrido_em", { withTimezone: true }).notNull(),
+  },
+  (tabela) => [index("eventos_licenca_licenca").on(tabela.licencaId)],
 );

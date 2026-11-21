@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Banco } from "../banco/conexao.ts";
 import { casosDeUsoDeClientes } from "./clientes.ts";
+import { casosDeUsoDeLicencas } from "./licencas.ts";
 import { casosDeUsoDeProdutos } from "./produtos.ts";
 
 export {
@@ -19,6 +20,18 @@ export {
   type DadosDoCliente,
   type ErrosDoCliente,
 } from "./clientes.ts";
+
+export {
+  DadosDeLicencaInvalidos,
+  ESTADOS_LICENCA,
+  type CampoLicenca,
+  type DadosEmissao,
+  type DetalheLicenca,
+  type EstadoLicenca,
+  type EventoLicenca,
+  type FiltroLicencas,
+  type Licenca,
+} from "./licencas.ts";
 
 export interface Relogio {
   agora(): Date;
@@ -50,6 +63,7 @@ export function criarNucleo(dependencias: DependenciasNucleo) {
     },
     ...casosDeUsoDeProdutos(dependencias),
     ...casosDeUsoDeClientes(dependencias),
+    ...casosDeUsoDeLicencas(dependencias),
   };
 }
 

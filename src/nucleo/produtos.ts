@@ -1,5 +1,5 @@
 import { asc, eq, sql } from "drizzle-orm";
-import { produtos } from "../banco/esquema.ts";
+import { licencas, produtos } from "../banco/esquema.ts";
 import { cifrarChavePrivada, gerarParDeChaves } from "./chaves.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
@@ -101,7 +101,14 @@ const colunasPublicas = {
 
 type LinhaPublica = { [K in keyof typeof colunasPublicas]: (typeof colunasPublicas)[K]["_"]["data"] };
 
-function paraProduto(linha: LinhaPublica): Produto {
+const colunasComContagem = {
+  ...colunasPublicas,
+  // Colunas qualificadas à mão: num select de uma tabela só, o Drizzle omite o nome
+  // da tabela, e "id" passaria a ser o da Licença dentro da subconsulta.
+  licencas: sql<number>`(SELECT count(*) FROM ${licencas} WHERE "licencas"."produto_id" = "produtos"."id")`.mapWith(Number),
+};
+
+function paraProduto(linha: LinhaPublica & { licencas: number }): Produto {
   return {
     identificador: linha.identificador,
     nome: linha.nome,
@@ -115,8 +122,7 @@ function paraProduto(linha: LinhaPublica): Produto {
     },
     chavePublica: linha.chavePublica,
     cadastradoEm: linha.cadastradoEm,
-    // Ainda não existe emissão de Licenças: a contagem entra junto com ela.
-    licencas: 0,
+    licencas: linha.licencas,
   };
 }
 
@@ -136,7 +142,7 @@ export function casosDeUsoDeProdutos({ banco, relogio, aleatoriedade, segredoCha
           cadastradoEm: relogio.agora(),
         })
         .returning(colunasPublicas);
-      return paraProduto(linha);
+      return paraProduto({ ...linha!, licencas: 0 });
     },
 
     /** Altera nome, descrição e regras. O identificador e as chaves não mudam. */
@@ -146,14 +152,14 @@ export function casosDeUsoDeProdutos({ banco, relogio, aleatoriedade, segredoCha
         .update(produtos)
         .set(valores)
         .where(eq(produtos.identificador, identificador))
-        .returning(colunasPublicas);
+        .returning(colunasComContagem);
       if (!linha) throw new ProdutoNaoEncontrado();
       return paraProduto(linha);
     },
 
     async listarProdutos(): Promise<Produto[]> {
       const linhas = await banco
-        .select(colunasPublicas)
+        .select(colunasComContagem)
         .from(produtos)
         .orderBy(asc(sql`lower(${produtos.nome})`), asc(produtos.id));
       return linhas.map(paraProduto);
@@ -161,7 +167,7 @@ export function casosDeUsoDeProdutos({ banco, relogio, aleatoriedade, segredoCha
 
     async obterProduto(identificador: string): Promise<Produto | null> {
       const [linha] = await banco
-        .select(colunasPublicas)
+        .select(colunasComContagem)
         .from(produtos)
         .where(eq(produtos.identificador, identificador));
       return linha ? paraProduto(linha) : null;

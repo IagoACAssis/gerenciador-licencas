@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { editarProduto } from "../acoes";
-import { BotaoCopiar } from "../botao-copiar";
+import { BotaoCopiar } from "../../botao-copiar";
 import { FormularioProduto } from "../formulario-produto";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,11 @@ export default async function DetalheProduto({ params }: { params: Promise<{ ide
     <>
       <p><Link href="/produtos">← Produtos</Link></p>
       <h1>{produto.nome}</h1>
-      <p>Licenças: {produto.licencas}</p>
+      <p>
+        <Link href={`/licencas?produto=${produto.identificador}`}>Licenças: {produto.licencas}</Link>
+        {" · "}
+        <Link href={`/licencas/nova?produto=${produto.identificador}`}>Emitir Licença</Link>
+      </p>
 
       <section className="cartao">
         <h2>Para embutir no Produto</h2>

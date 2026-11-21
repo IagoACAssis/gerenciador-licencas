@@ -22,3 +22,16 @@ form.busca { display: flex; gap: 8px; margin-bottom: 16px; }
 form.busca input { flex: 1; }
 form.cadastro { max-width: 480px; display: grid; gap: 12px; background: #fff; padding: 24px; border: 1px solid #ddd; border-radius: 8px; }
 .acoes { display: flex; gap: 16px; align-items: center; }
+select { padding: 8px; font-size: 16px; border: 1px solid #bbb; border-radius: 4px; background: #fff; }
+form.filtros { flex-wrap: wrap; }
+.aviso { background: #fff4e5; border: 1px solid #f0b45b; border-radius: 4px; padding: 10px 12px; }
+.estado { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 13px; background: #e8e8e4; }
+.estado-ativa { background: #dff3e4; color: #1d6b34; }
+.estado-expirada { background: #fbe3e3; color: #8a1c1c; }
+.estado-suspensa { background: #fff1d6; color: #7a5200; }
+.estado-revogada { background: #e4e4e4; color: #444; }
+.indicacao { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px; font-size: 13px; border: 1px solid #bbb; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; }
+dt { font-weight: 600; }
+dd { margin: 0; }
+ol.historico { padding-left: 20px; }
