@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { administradorAutenticado } from "@/acesso/administrador";
 import { DadosDeProdutoInvalidos, ProdutoNaoEncontrado, type CampoProduto, type DadosProduto } from "@/nucleo/index";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+import { comAviso } from "../avisos";
 
 export interface EstadoFormularioProduto {
   valores: Record<string, string>;
@@ -70,7 +71,7 @@ export async function cadastrarProduto(
     return errosDoFormulario(erro, valores);
   }
   revalidatePath("/produtos");
-  redirect(`/produtos/${identificador}`);
+  redirect(comAviso(`/produtos/${identificador}`, "produto-cadastrado"));
 }
 
 export async function editarProduto(

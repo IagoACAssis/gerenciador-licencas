@@ -4,6 +4,8 @@ const ESTILOS = {
   primario: "bg-acento text-sobre-acento hover:brightness-110",
   secundario: "bg-superficie text-tinta ring-1 ring-borda hover:bg-elevada",
   perigo: "bg-perigo text-fundo hover:brightness-110",
+  /** Ação destrutiva que ainda pede confirmação: vermelha, mas sem o peso do botão de confirmar. */
+  perigoContorno: "bg-superficie text-perigo ring-1 ring-borda hover:bg-perigo-suave",
   fantasma: "text-suave hover:bg-elevada hover:text-tinta",
 };
 

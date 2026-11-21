@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { administradorAutenticado } from "@/acesso/administrador";
 import { ClienteNaoEncontrado, DadosDeClienteInvalidos, type DadosDoCliente, type ErrosDoCliente } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+import { comAviso } from "../avisos";
 
 export interface EstadoFormularioCliente {
   valores?: DadosDoCliente;
@@ -27,5 +28,7 @@ export async function salvarCliente(_estado: EstadoFormularioCliente, formulario
     throw erro;
   }
   revalidatePath("/clientes");
-  redirect("/clientes");
+  if (id) revalidatePath(`/clientes/${id}`);
+  // A edição volta à página do Cliente, de onde ela foi aberta; o cadastro volta à lista.
+  redirect(id ? comAviso(`/clientes/${id}`, "cliente-salvo") : comAviso("/clientes", "cliente-cadastrado"));
 }

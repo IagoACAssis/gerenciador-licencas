@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
+import { CabecalhoDaPagina, LinkDeVolta } from "@/componentes/pagina";
 import { FormularioCliente } from "../formulario";
 
-export const metadata: Metadata = { title: "Novo Cliente" };
+export const metadata: Metadata = { title: "Cadastrar Cliente" };
 
 export default function NovoCliente() {
   return (
-    <div className="legado">
-      <h1>Novo Cliente</h1>
+    <div className="grid gap-8">
+      <LinkDeVolta href="/clientes">Clientes</LinkDeVolta>
+      <CabecalhoDaPagina titulo="Cadastrar Cliente" descricao="Depois do cadastro, emita Licenças para ele." />
       <FormularioCliente />
     </div>
   );

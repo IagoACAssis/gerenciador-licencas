@@ -4,6 +4,7 @@ import { casosDeUsoDeClientes } from "./clientes.ts";
 import { casosDeUsoDeExclusao } from "./exclusao.ts";
 import { casosDeUsoDeLicencas } from "./licencas.ts";
 import { casosDeUsoDeProdutos } from "./produtos.ts";
+import { casosDeUsoDoResumo } from "./resumo.ts";
 import { casosDeUsoDeValidacao } from "./validacao.ts";
 
 export {
@@ -41,6 +42,8 @@ export {
 } from "./licencas.ts";
 
 export { ExclusaoNaoPermitida, type Excluidos } from "./exclusao.ts";
+
+export { type AtividadeRecente, type ResumoInstancia } from "./resumo.ts";
 
 export {
   DadosDeValidacaoInvalidos,
@@ -84,6 +87,7 @@ export function criarNucleo(dependencias: DependenciasNucleo) {
     ...casosDeUsoDeLicencas(dependencias),
     ...casosDeUsoDeValidacao(dependencias),
     ...casosDeUsoDeExclusao(dependencias),
+    ...casosDeUsoDoResumo(dependencias),
   };
 }
 

@@ -1,41 +1,34 @@
-import Link from "next/link";
 import type { Licenca } from "@/nucleo";
-import { formatarData } from "../formatacao";
+import { Tabela, type Coluna } from "@/componentes/lista";
+import { SeloDeEstado } from "@/componentes/selo-de-estado";
+import { descreverPrazoDaLicenca, formatarValidade } from "../formatacao";
 
-/** Estado com as indicações "a vencer" e "em Carência", quando houver. */
-export function Estado({ licenca }: { licenca: Licenca }) {
-  return (
-    <>
-      <span className={`estado estado-${licenca.estado.toLowerCase()}`}>{licenca.estado}</span>
-      {licenca.aVencer && <span className="indicacao">a vencer</span>}
-      {licenca.emCarencia && <span className="indicacao">em Carência</span>}
-    </>
-  );
-}
-
+/** Licenças numa tabela: prefixo, Cliente, Produto, estado e prazo. Cada linha leva ao detalhe. */
 export function TabelaLicencas({ licencas, semCliente = false }: { licencas: Licenca[]; semCliente?: boolean }) {
+  const agora = new Date();
+  const colunas: [Coluna<Licenca>, ...Coluna<Licenca>[]] = [
+    { titulo: "Licença", celula: (l) => <span className="font-mono text-[13px] whitespace-nowrap">{l.prefixo}…</span> },
+    ...(semCliente ? [] : [{ titulo: "Cliente", celula: (l: Licenca) => <span className="font-medium">{l.cliente.nome}</span> }]),
+    { titulo: "Produto", celula: (l) => <span className="text-suave">{l.produto.nome}</span> },
+    { titulo: "Estado", celula: (l) => <SeloDeEstado licenca={l} /> },
+    {
+      titulo: "Prazo",
+      classe: "whitespace-nowrap",
+      celula: (l) => (
+        <>
+          <span>{descreverPrazoDaLicenca(l, agora)}</span>
+          {l.validaAte && <span className="block text-xs text-suave tabular-nums">{formatarValidade(l.validaAte)}</span>}
+        </>
+      ),
+    },
+  ];
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Chave</th>
-          <th>Produto</th>
-          {!semCliente && <th>Cliente</th>}
-          <th>Validade</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody>
-        {licencas.map((licenca) => (
-          <tr key={licenca.prefixo}>
-            <td><Link href={`/licencas/${licenca.prefixo}`}><code>{licenca.prefixo}…</code></Link></td>
-            <td>{licenca.produto.nome}</td>
-            {!semCliente && <td><Link href={`/clientes/${licenca.cliente.id}`}>{licenca.cliente.nome}</Link></td>}
-            <td>{licenca.validaAte ? formatarData(licenca.validaAte) : "Perpétua"}</td>
-            <td><Estado licenca={licenca} /></td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Tabela
+      colunas={colunas}
+      itens={licencas}
+      chave={(l) => l.prefixo}
+      href={(l) => `/licencas/${l.prefixo}`}
+      rotulo={(l) => `Licença ${l.prefixo}…, ${l.cliente.nome}, ${l.produto.nome}`}
+    />
   );
 }

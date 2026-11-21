@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+import { CabecalhoDaPagina, LinkDeVolta } from "@/componentes/pagina";
 import { parametro } from "../../formatacao";
+import { FaltaProdutoOuCliente } from "../falta-produto-ou-cliente";
 import { FormularioEmissao } from "../formulario-emissao";
 
 export const metadata: Metadata = { title: "Emitir Licença" };
@@ -15,14 +16,14 @@ export default async function NovaLicenca({ searchParams }: {
   const nucleo = nucleoDaInstancia();
   const [produtos, clientes] = await Promise.all([nucleo.listarProdutos(), nucleo.listarClientes()]);
   return (
-    <div className="legado">
-      <p><Link href="/licencas">← Licenças</Link></p>
-      <h1>Emitir Licença</h1>
+    <div className="grid gap-8">
+      <LinkDeVolta href="/licencas">Licenças</LinkDeVolta>
+      <CabecalhoDaPagina
+        titulo="Emitir Licença"
+        descricao="A Chave de licença aparece uma única vez, logo depois da Emissão."
+      />
       {produtos.length === 0 || clientes.length === 0 ? (
-        <p>
-          Para emitir uma Licença, cadastre antes pelo menos um <Link href="/produtos/novo">Produto</Link> e
-          um <Link href="/clientes/novo">Cliente</Link>.
-        </p>
+        <FaltaProdutoOuCliente titulo="Ainda não dá para emitir" temProduto={produtos.length > 0} temCliente={clientes.length > 0} />
       ) : (
         <FormularioEmissao
           produtos={produtos.map((p) => ({ valor: p.identificador, rotulo: p.nome }))}

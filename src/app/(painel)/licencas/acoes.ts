@@ -1,5 +1,5 @@
 "use server";
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { administradorAutenticado } from "@/acesso/administrador";
 import {
@@ -10,7 +10,7 @@ import {
   type CampoLicenca,
 } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
-import { fimDoDia } from "../formatacao";
+import { fimDoDia, formatarData } from "../formatacao";
 
 export interface EstadoEmissao {
   valores: Record<CampoLicenca, string>;
@@ -50,9 +50,11 @@ export async function emitirLicenca(_estado: EstadoEmissao, formulario: FormData
   }
 }
 
-/** Resultado de uma ação no detalhe da Licença: só volta com a recusa; o sucesso recarrega o detalhe. */
+/** Resultado de uma ação no detalhe da Licença: a recusa, ou o resultado para o aviso temporário. */
 export interface EstadoAcaoNaLicenca {
   erro?: string;
+  /** Só no sucesso: o que mudou, como o painel avisa ("Licença renovada até 01/05/2027."). */
+  aviso?: string;
 }
 
 /**
@@ -75,49 +77,78 @@ async function recusaNaLicenca(
   }
 }
 
-/** Roda a ação e volta ao detalhe da Licença, ou devolve a recusa como mensagem. */
+/**
+ * Roda a ação e atualiza o detalhe da Licença na mesma página, ou devolve a recusa
+ * como mensagem. No sucesso, devolve `aviso` para o aviso temporário.
+ */
 async function executarNaLicenca(
   prefixo: string,
   acao: () => Promise<void>,
   recusas: (erro: unknown) => erro is Error,
+  aviso: string,
 ): Promise<EstadoAcaoNaLicenca> {
   const recusa = await recusaNaLicenca(acao, recusas);
   if (recusa) return recusa;
-  const caminho = `/licencas/${encodeURIComponent(prefixo)}`;
-  revalidatePath(caminho);
+  revalidatePath(`/licencas/${encodeURIComponent(prefixo)}`);
   revalidatePath("/licencas");
-  redirect(caminho);
+  // O endereço aberto pode trazer o prefixo noutra grafia (minúsculas, sem hífen); o
+  // refresh atualiza a página que está na tela, seja qual for.
+  refresh();
+  return { aviso };
 }
 
-/** Ação repetida (Ativação já removida) só recarrega o detalhe. */
-async function responderAcaoNaLicenca(prefixo: string, acao: () => Promise<void>): Promise<void> {
-  await executarNaLicenca(prefixo, acao, (erro) => erro instanceof AtivacaoNaoEncontrada);
-}
+const nenhumaRecusa = (_erro: unknown): _erro is Error => false;
 
-/** Ações de ciclo de vida: devolvem a recusa do núcleo para o formulário mostrar. */
-function acaoDeCicloDeVida(formulario: FormData, acao: (prefixo: string) => Promise<void>): Promise<EstadoAcaoNaLicenca> {
+/** Ações de ciclo de vida: devolvem a recusa do núcleo para o diálogo mostrar. */
+function acaoDeCicloDeVida(
+  formulario: FormData,
+  acao: (prefixo: string) => Promise<void>,
+  aviso: string,
+): Promise<EstadoAcaoNaLicenca> {
   const prefixo = String(formulario.get("prefixo") ?? "");
   return executarNaLicenca(
     prefixo,
     () => acao(prefixo),
     (erro) => erro instanceof DadosDeLicencaInvalidos || erro instanceof AcaoNaoPermitida,
+    aviso,
   );
 }
 
-export async function removerAtivacao(formulario: FormData): Promise<void> {
+export async function removerAtivacao(_estado: EstadoAcaoNaLicenca, formulario: FormData): Promise<EstadoAcaoNaLicenca> {
   const prefixo = String(formulario.get("prefixo") ?? "");
   const dispositivo = String(formulario.get("dispositivo") ?? "");
-  await responderAcaoNaLicenca(prefixo, () => nucleoDaInstancia().removerAtivacao(prefixo, dispositivo));
+  const remover = async () => {
+    try {
+      await nucleoDaInstancia().removerAtivacao(prefixo, dispositivo);
+    } catch (erro) {
+      // Ação repetida (a Ativação já saiu): só atualiza o detalhe.
+      if (!(erro instanceof AtivacaoNaoEncontrada)) throw erro;
+    }
+  };
+  return executarNaLicenca(prefixo, remover, nenhumaRecusa, "Ativação removida.");
 }
 
-export async function zerarContagemDeSubstituicoes(formulario: FormData): Promise<void> {
+export async function zerarContagemDeSubstituicoes(
+  _estado: EstadoAcaoNaLicenca,
+  formulario: FormData,
+): Promise<EstadoAcaoNaLicenca> {
   const prefixo = String(formulario.get("prefixo") ?? "");
-  await responderAcaoNaLicenca(prefixo, () => nucleoDaInstancia().zerarContagemDeSubstituicoes(prefixo));
+  return executarNaLicenca(
+    prefixo,
+    () => nucleoDaInstancia().zerarContagemDeSubstituicoes(prefixo),
+    nenhumaRecusa,
+    "Contagem de Substituições de ativação zerada.",
+  );
 }
 
 export async function renovarLicenca(_estado: EstadoAcaoNaLicenca, formulario: FormData): Promise<EstadoAcaoNaLicenca> {
   const validaAte = fimDoDia(String(formulario.get("validaAte") ?? "").trim());
-  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().renovarLicenca(prefixo, validaAte));
+  return acaoDeCicloDeVida(
+    formulario,
+    (prefixo) => nucleoDaInstancia().renovarLicenca(prefixo, validaAte),
+    // Só aparece no sucesso, quando a data já foi aceita pelo núcleo.
+    `Licença renovada até ${formatarData(validaAte)}.`,
+  );
 }
 
 export async function alterarLimiteDeAtivacoes(
@@ -125,21 +156,25 @@ export async function alterarLimiteDeAtivacoes(
   formulario: FormData,
 ): Promise<EstadoAcaoNaLicenca> {
   const limite = lerLimite(String(formulario.get("limiteAtivacoes") ?? "").trim());
-  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().alterarLimiteDeAtivacoes(prefixo, limite));
+  return acaoDeCicloDeVida(
+    formulario,
+    (prefixo) => nucleoDaInstancia().alterarLimiteDeAtivacoes(prefixo, limite),
+    limite === null ? "Limite de ativações volta a seguir o padrão do Produto." : `Limite de ativações alterado para ${limite}.`,
+  );
 }
 
 export async function suspenderLicenca(_estado: EstadoAcaoNaLicenca, formulario: FormData): Promise<EstadoAcaoNaLicenca> {
-  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().suspenderLicenca(prefixo));
+  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().suspenderLicenca(prefixo), "Licença suspensa.");
 }
 
 export async function reativarLicenca(_estado: EstadoAcaoNaLicenca, formulario: FormData): Promise<EstadoAcaoNaLicenca> {
-  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().reativarLicenca(prefixo));
+  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().reativarLicenca(prefixo), "Licença reativada.");
 }
 
-/** A Revogação é definitiva: só segue com a confirmação marcada no formulário. */
+/** A Revogação é definitiva: só segue com a confirmação enviada pelo formulário. */
 export async function revogarLicenca(_estado: EstadoAcaoNaLicenca, formulario: FormData): Promise<EstadoAcaoNaLicenca> {
   if (formulario.get("confirmacao") !== "sim") return { erro: "Confirme que a Revogação é definitiva." };
-  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().revogarLicenca(prefixo));
+  return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().revogarLicenca(prefixo), "Licença revogada.");
 }
 
 /** Resultado da Troca de chave: a recusa, ou a Chave nova, que só existe nesta resposta. */
@@ -149,7 +184,7 @@ export interface EstadoTrocaDeChave extends EstadoAcaoNaLicenca {
 }
 
 /**
- * Troca de chave: só segue com a confirmação marcada. Ao contrário das outras ações,
+ * Troca de chave: só segue com a confirmação enviada. Ao contrário das outras ações,
  * não revalida nem redireciona: o prefixo antigo deixou de existir, e recarregar o
  * detalhe dele mostraria "não encontrada" no lugar da Chave nova. As páginas do
  * painel são dinâmicas e já saem atualizadas na próxima visita.

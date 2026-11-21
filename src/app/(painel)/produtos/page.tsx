@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { Produto } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+import { classeBotao } from "@/componentes/botoes";
+import { EstadoVazio, Tabela } from "@/componentes/lista";
+import { CabecalhoDaPagina } from "@/componentes/pagina";
+import { contar } from "../formatacao";
 
 export const metadata: Metadata = { title: "Produtos" };
 
@@ -9,28 +14,35 @@ export const dynamic = "force-dynamic";
 export default async function Produtos() {
   const produtos = await nucleoDaInstancia().listarProdutos();
   return (
-    <div className="legado">
-      <div className="titulo">
-        <h1>Produtos</h1>
-        <Link className="botao" href="/produtos/novo">Cadastrar Produto</Link>
-      </div>
+    <div className="grid gap-6">
+      <CabecalhoDaPagina
+        titulo="Produtos"
+        descricao="Cada Produto tem as próprias regras e o próprio par de chaves de assinatura."
+        acoes={<Link href="/produtos/novo" className={classeBotao("primario")}>Cadastrar Produto</Link>}
+      />
       {produtos.length === 0 ? (
-        <p>Nenhum Produto cadastrado ainda.</p>
+        <EstadoVazio
+          titulo="Nenhum Produto ainda"
+          acao={<Link href="/produtos/novo" className={classeBotao("primario")}>Cadastrar Produto</Link>}
+        >
+          Cadastre o primeiro Produto. A Instância gera o identificador público e a chave pública que você embute nele.
+        </EstadoVazio>
       ) : (
-        <table>
-          <thead>
-            <tr><th>Nome</th><th>Identificador</th><th>Licenças</th></tr>
-          </thead>
-          <tbody>
-            {produtos.map((produto) => (
-              <tr key={produto.identificador}>
-                <td><Link href={`/produtos/${produto.identificador}`}>{produto.nome}</Link></td>
-                <td><code>{produto.identificador}</code></td>
-                <td>{produto.licencas}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Tabela<Produto>
+          colunas={[
+            { titulo: "Nome", celula: (p) => <span className="font-medium">{p.nome}</span> },
+            {
+              titulo: "Identificador público",
+              classe: "hidden sm:table-cell",
+              celula: (p) => <code className="font-mono text-[13px] text-suave">{p.identificador}</code>,
+            },
+            { titulo: "Licenças", classe: "text-right tabular-nums", celula: (p) => p.licencas },
+          ]}
+          itens={produtos}
+          chave={(p) => p.identificador}
+          href={(p) => `/produtos/${p.identificador}`}
+          rotulo={(p) => `${p.nome}, ${contar(p.licencas, "Licença", "Licenças")}`}
+        />
       )}
     </div>
   );

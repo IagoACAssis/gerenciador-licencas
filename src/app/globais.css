@@ -1,8 +1,6 @@
 /* Base visual do painel (Licença AI, variante B do protótipo). ADR-0004: Tailwind, sem biblioteca de componentes. */
-@layer theme, base, legado, components, utilities;
+@layer theme, base, components, utilities;
 @import "tailwindcss";
-/* Telas ainda não migradas. Sai quando a última tela migrar. */
-@import "./legado.css" layer(legado);
 
 /* Só as cores do painel existem: nada de cinza ou azul do Tailwind que não troque com o tema. */
 @theme {
@@ -28,6 +26,7 @@
   --color-alerta-suave: var(--alerta-suave);
   --color-perigo: var(--perigo);
   --color-perigo-suave: var(--perigo-suave);
+  --color-veu: var(--veu);
 
   --animate-entrar: entrar 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   @keyframes entrar {
@@ -40,7 +39,8 @@
  * Contraste WCAG AA conferido (texto normal, 4,5:1) para tinta, suave e acento sobre
  * fundo, superfície e elevada, sobre-acento sobre acento e cada semântica sobre a sua
  * versão suave, nos dois temas. O alerta claro saiu de #a16207 (4,42:1 sobre
- * alerta-suave) para #965b06 (4,97:1).
+ * alerta-suave) para #965b06 (4,97:1). O contorno dos campos (suave a 80%, campos.ts)
+ * fica acima de 3:1 sobre superfície e elevada nos dois temas (3,38:1 no pior caso).
  */
 :root {
   color-scheme: light;
@@ -49,6 +49,8 @@
   --acento: #1d5c45; --sobre-acento: #ffffff; --acento-suave: #e4efea;
   --ok: #15803d; --ok-suave: #dcfce7; --alerta: #965b06; --alerta-suave: #fef3c7;
   --perigo: #b91c1c; --perigo-suave: #fee2e2;
+  /* O fundo escurecido atrás dos diálogos e da paleta, igual nos dois temas. */
+  --veu: rgb(0 0 0 / 0.4);
 }
 
 :root[data-tema="escuro"] {
@@ -70,6 +72,42 @@
   }
   :focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
   ::selection { background: var(--acento-suave); color: var(--tinta); }
+}
+
+@layer components {
+  /* Diálogo nativo: entrada e saída curtas, com @starting-style e allow-discrete. */
+  dialog {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition:
+      opacity 200ms,
+      transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  dialog[open] { opacity: 1; transform: none; }
+  @starting-style {
+    dialog[open] { opacity: 0; transform: translateY(8px) scale(0.98); }
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0);
+    transition:
+      background 200ms,
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  dialog[open]::backdrop { background: var(--veu); }
+  @starting-style {
+    dialog[open]::backdrop { background: rgb(0 0 0 / 0); }
+  }
+
+  /* Aviso temporário: sobe, fica e desce. A duração vem do componente (aviso-temporario.tsx). */
+  @keyframes aviso-temporario {
+    from { opacity: 0; transform: translateY(12px); }
+    8%, 92% { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(12px); }
+  }
+  .aviso-temporario { animation: aviso-temporario 4000ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 }
 
 /* Movimento: tudo desligado quando o sistema pede movimento reduzido. */
