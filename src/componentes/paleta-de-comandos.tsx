@@ -161,7 +161,7 @@ export function PaletaDeComandos() {
         onClick={(evento) => {
           if (cliqueComecouFora.current && evento.target === evento.currentTarget) fechar();
         }}
-        className="mx-auto mt-[12vh] mb-auto w-[min(92vw,36rem)] overflow-hidden rounded-2xl bg-superficie p-0 text-tinta shadow-2xl ring-1 ring-borda transition-[opacity,translate,scale,overlay,display] transition-discrete duration-200 ease-out not-open:translate-y-2 not-open:scale-98 not-open:opacity-0 starting:open:translate-y-2 starting:open:scale-98 starting:open:opacity-0 backdrop:bg-transparent backdrop:transition-[background-color,overlay,display] backdrop:transition-discrete backdrop:duration-200 open:backdrop:bg-[rgb(0_0_0/0.35)] starting:open:backdrop:bg-transparent"
+        className="mx-auto mt-[12vh] mb-auto w-[min(92vw,36rem)] overflow-hidden rounded-2xl bg-superficie p-0 text-tinta shadow-2xl ring-1 ring-borda transition-[opacity,translate,scale,overlay,display] transition-discrete duration-200 ease-out not-open:translate-y-2 not-open:scale-98 not-open:opacity-0 starting:open:translate-y-2 starting:open:scale-98 starting:open:opacity-0 backdrop:bg-transparent backdrop:transition-[background-color,overlay,display] backdrop:transition-discrete backdrop:duration-200 open:backdrop:bg-veu starting:open:backdrop:bg-transparent"
       >
         <div className="flex items-center gap-3 border-b px-4">
           <Lupa />
