@@ -208,8 +208,15 @@ function erroNoLimite(limite: number | null): string | undefined {
   return "Informe um número inteiro de zero ou mais, ou deixe vazio para seguir o padrão do Produto.";
 }
 
-/** Licença travada na transação de uma ação do Administrador, com o que as recusas precisam. */
-type LicencaTravada = Pick<typeof licencas.$inferSelect, "id" | "validaAte" | "limiteAtivacoes" | "suspensaEm" | "revogadaEm">;
+/** O que uma ação do Administrador lê da Licença travada: o que as recusas precisam. */
+const colunasTravadas = {
+  id: licencas.id,
+  validaAte: licencas.validaAte,
+  limiteAtivacoes: licencas.limiteAtivacoes,
+  suspensaEm: licencas.suspensaEm,
+  revogadaEm: licencas.revogadaEm,
+};
+type LicencaTravada = Pick<typeof licencas.$inferSelect, keyof typeof colunasTravadas>;
 
 /** A Revogação é definitiva: nenhuma ação de ciclo de vida muda uma Licença Revogada. */
 function recusarSeRevogada(licenca: LicencaTravada): void {
@@ -266,13 +273,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       const [licenca] =
         normalizado
           ? await tx
-              .select({
-                id: licencas.id,
-                validaAte: licencas.validaAte,
-                limiteAtivacoes: licencas.limiteAtivacoes,
-                suspensaEm: licencas.suspensaEm,
-                revogadaEm: licencas.revogadaEm,
-              })
+              .select(colunasTravadas)
               .from(licencas)
               .where(eq(licencas.prefixoChave, normalizado))
               .for("update")

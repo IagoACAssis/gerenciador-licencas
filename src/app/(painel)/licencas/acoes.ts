@@ -19,6 +19,11 @@ export interface EstadoEmissao {
   emitida?: { chave: string; prefixo: string };
 }
 
+/** Campo do Limite de ativações: vazio = segue o padrão do Produto. */
+function lerLimite(texto: string): number | null {
+  return texto ? Number(texto) : null;
+}
+
 export async function emitirLicenca(_estado: EstadoEmissao, formulario: FormData): Promise<EstadoEmissao> {
   // Server Actions podem ser chamadas diretamente; o layout não as protege.
   if (!(await administradorAutenticado())) redirect("/entrar");
@@ -34,7 +39,7 @@ export async function emitirLicenca(_estado: EstadoEmissao, formulario: FormData
       produto: valores.produto,
       cliente: valores.cliente ? Number(valores.cliente) : Number.NaN,
       validaAte: valores.validaAte ? fimDoDia(valores.validaAte) : null,
-      limiteAtivacoes: valores.limiteAtivacoes ? Number(valores.limiteAtivacoes) : null,
+      limiteAtivacoes: lerLimite(valores.limiteAtivacoes),
     });
     revalidatePath("/licencas");
     revalidatePath("/produtos");
@@ -109,8 +114,7 @@ export async function alterarLimiteDeAtivacoes(
   _estado: EstadoAcaoNaLicenca,
   formulario: FormData,
 ): Promise<EstadoAcaoNaLicenca> {
-  const texto = String(formulario.get("limiteAtivacoes") ?? "").trim();
-  const limite = texto ? Number(texto) : null;
+  const limite = lerLimite(String(formulario.get("limiteAtivacoes") ?? "").trim());
   return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().alterarLimiteDeAtivacoes(prefixo, limite));
 }
 
