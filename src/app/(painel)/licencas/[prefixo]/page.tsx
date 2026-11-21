@@ -8,6 +8,7 @@ import { Abas } from "@/componentes/abas";
 import { BotaoCopiar } from "@/componentes/botao-copiar";
 import { CLASSE_AJUDA, CLASSE_CAMPO, CLASSE_ROTULO } from "@/componentes/campos";
 import { DialogoDeConfirmacao } from "@/componentes/dialogo-de-confirmacao";
+import { LinkDeVolta } from "@/componentes/pagina";
 import { SeloDeEstado } from "@/componentes/selo-de-estado";
 import { descreverPrazo, formatarData, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
 import {
@@ -45,9 +46,7 @@ export default async function DetalheDaLicenca({ params }: { params: Promise<{ p
   return (
     <AreaDaTrocaDeChave>
       <div className="grid gap-8">
-        <Link href="/licencas" className="group inline-flex w-fit items-center gap-1 rounded-md text-sm text-suave hover:text-tinta">
-          <span aria-hidden="true" className="transition-transform duration-150 group-hover:-translate-x-0.5">←</span> Licenças
-        </Link>
+        <LinkDeVolta href="/licencas">Licenças</LinkDeVolta>
 
         <div className="flex animate-entrar flex-wrap items-start justify-between gap-6">
           <div>

@@ -1,3 +1,4 @@
+import type { Licenca } from "@/nucleo";
 import { UM_DIA_MS } from "@/nucleo/estado";
 
 // As datas de validade valem até o fim do dia em UTC, e o painel as mostra em UTC
@@ -26,7 +27,6 @@ export function parametro(valor: string | string[] | undefined): string {
   return (Array.isArray(valor) ? valor[0] : valor) ?? "";
 }
 
-
 /** Quantos dias de calendário, em UTC como as datas do painel, vão de `de` até `ate` (negativo se `ate` já passou). */
 function diasDeCalendario(de: Date, ate: Date): number {
   return Math.floor(ate.getTime() / UM_DIA_MS) - Math.floor(de.getTime() / UM_DIA_MS);
@@ -41,6 +41,17 @@ export function descreverPrazo(validaAte: Date, agora: Date): string {
   if (dias === 0) return "vence hoje";
   if (dias === -1) return "venceu ontem";
   return `venceu há ${-dias} dias`;
+}
+
+/**
+ * O prazo da Licença numa palavra ou frase, para as listas: "vence em 4 dias", "venceu há
+ * 3 dias", "perpétua", ou "suspensa" e "revogada", em que a data de validade não é o que
+ * importa agora.
+ */
+export function descreverPrazoDaLicenca(licenca: Pick<Licenca, "estado" | "validaAte">, agora: Date): string {
+  if (licenca.estado === "Suspensa") return "suspensa";
+  if (licenca.estado === "Revogada") return "revogada";
+  return licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "perpétua";
 }
 
 /** Há quanto tempo, em linguagem direta: "hoje", "ontem", "há 5 dias", "há 2 meses", "há 1 ano". */

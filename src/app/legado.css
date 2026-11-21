@@ -61,7 +61,6 @@
     border: 1px solid var(--borda); border-radius: 8px;
   }
   .acoes { display: flex; gap: 16px; align-items: center; }
-  form.filtros { flex-wrap: wrap; }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; }
   dt { font-weight: 600; }
   dd { margin: 0; }
