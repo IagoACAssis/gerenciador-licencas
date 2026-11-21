@@ -286,12 +286,12 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
   /**
    * Roda uma ação do Administrador sobre a Licença do prefixo, com ela travada,
    * como na Validação, e registra o evento no histórico na mesma transação.
-   * Devolve o id da Licença.
+   * Devolve o id da Licença e o instante da ação.
    */
   async function emTransacaoNaLicenca(
     prefixo: string,
     acao: (tx: Transacao, licenca: LicencaTravada, agora: Date) => Promise<NovoEvento>,
-  ): Promise<number> {
+  ): Promise<{ id: number; agora: Date }> {
     const normalizado = lerPrefixo(prefixo);
     const agora = relogio.agora();
     return banco.transaction(async (tx) => {
@@ -306,7 +306,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       if (!licenca) throw new LicencaNaoEncontrada();
       const { tipo, ...dados } = await acao(tx, licenca, agora);
       await tx.insert(eventosLicenca).values({ licencaId: licenca.id, tipo, dados, ocorridoEm: agora });
-      return licenca.id;
+      return { id: licenca.id, agora };
     });
   }
 
@@ -354,7 +354,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
      */
     async trocarChave(prefixo: string): Promise<{ licenca: Licenca; chave: string }> {
       return comChaveNova(bytesAleatorios, async (nova) => {
-        const id = await emTransacaoNaLicenca(prefixo, async (tx, licenca) => {
+        const { id, agora } = await emTransacaoNaLicenca(prefixo, async (tx, licenca) => {
           recusarSeRevogada(licenca);
           await tx
             .update(licencas)
@@ -362,7 +362,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
             .where(eq(licencas.id, licenca.id));
           return { tipo: "troca_de_chave", prefixoAnterior: emGrupos(licenca.prefixoChave) };
         });
-        return { licenca: await obterPorId(id, relogio.agora()), chave: nova.chave };
+        return { licenca: await obterPorId(id, agora), chave: nova.chave };
       });
     },
 

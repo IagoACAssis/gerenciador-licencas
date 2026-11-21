@@ -57,12 +57,27 @@ describe("Troca de chave", () => {
     const trocada = await nucleo.trocarChave(prefixo);
 
     expect(trocada.licenca).toMatchObject({ estado: "Expirada", validaAte: daquiA(30) });
+    expect(await validar(chave, "pc-01")).toEqual({ resultado: "recusada", motivo: "chave_invalida" });
     expect(await validar(trocada.chave, "pc-01")).toEqual({ resultado: "recusada", motivo: "licenca_expirada" });
     const detalhe = (await nucleo.obterLicenca(trocada.licenca.prefixo))!;
     expect(detalhe.historico).toEqual([
       { tipo: "emissao", ocorridoEm: INICIO, validaAte: daquiA(30), limiteAtivacoes: null },
       { tipo: "troca_de_chave", ocorridoEm: daquiA(40), prefixoAnterior: prefixo },
     ]);
+  });
+
+  it("numa Licença Expirada em Carência, a Chave nova continua aceita no Dispositivo já ativado", async () => {
+    const { prefixo, chave, validar } = await cenario({ validaAte: daquiA(30) });
+    await validar(chave, "pc-01");
+    tempo.avancar(32 * UM_DIA);
+
+    const trocada = await nucleo.trocarChave(prefixo);
+
+    expect(trocada.licenca).toMatchObject({ estado: "Expirada", emCarencia: true });
+    expect(await validar(chave, "pc-01")).toEqual({ resultado: "recusada", motivo: "chave_invalida" });
+    expect(await validar(trocada.chave, "pc-01")).toEqual({ resultado: "aceita", motivo: null });
+    const detalhe = (await nucleo.obterLicenca(trocada.licenca.prefixo))!;
+    expect(detalhe.ativacoes.map((a) => a.dispositivo)).toEqual(["pc-01"]);
   });
 
   it("numa Licença Suspensa, mantém a suspensão e as Ativações", async () => {
@@ -73,6 +88,7 @@ describe("Troca de chave", () => {
     const trocada = await nucleo.trocarChave(prefixo);
 
     expect(trocada.licenca.estado).toBe("Suspensa");
+    expect(await validar(chave, "pc-01")).toEqual({ resultado: "recusada", motivo: "chave_invalida" });
     expect(await validar(trocada.chave, "pc-01")).toEqual({ resultado: "recusada", motivo: "licenca_suspensa" });
     const detalhe = (await nucleo.obterLicenca(trocada.licenca.prefixo))!;
     expect(detalhe.ativacoes.map((a) => a.dispositivo)).toEqual(["pc-01"]);

@@ -56,23 +56,33 @@ export interface EstadoAcaoNaLicenca {
 }
 
 /**
- * Roda a ação e volta ao detalhe da Licença; Licença inexistente volta à lista.
- * Os erros que o detalhe sabe mostrar (os de `recusas`) voltam como mensagem.
+ * Roda a ação do Administrador sobre a Licença; Licença inexistente volta à lista.
+ * Devolve a recusa que o detalhe sabe mostrar (as de `recusas`), ou undefined se deu certo.
  */
-async function executarNaLicenca(
-  prefixo: string,
+async function recusaNaLicenca(
   acao: () => Promise<void>,
   recusas: (erro: unknown) => erro is Error,
-): Promise<EstadoAcaoNaLicenca> {
+): Promise<EstadoAcaoNaLicenca | undefined> {
   // Server Actions podem ser chamadas diretamente; o layout não as protege.
   if (!(await administradorAutenticado())) redirect("/entrar");
   try {
     await acao();
+    return undefined;
   } catch (erro) {
     if (erro instanceof LicencaNaoEncontrada) redirect("/licencas");
     if (recusas(erro)) return { erro: erro.message };
     throw erro;
   }
+}
+
+/** Roda a ação e volta ao detalhe da Licença, ou devolve a recusa como mensagem. */
+async function executarNaLicenca(
+  prefixo: string,
+  acao: () => Promise<void>,
+  recusas: (erro: unknown) => erro is Error,
+): Promise<EstadoAcaoNaLicenca> {
+  const recusa = await recusaNaLicenca(acao, recusas);
+  if (recusa) return recusa;
   const caminho = `/licencas/${encodeURIComponent(prefixo)}`;
   revalidatePath(caminho);
   revalidatePath("/licencas");
@@ -145,16 +155,15 @@ export interface EstadoTrocaDeChave extends EstadoAcaoNaLicenca {
  * painel são dinâmicas e já saem atualizadas na próxima visita.
  */
 export async function trocarChave(_estado: EstadoTrocaDeChave, formulario: FormData): Promise<EstadoTrocaDeChave> {
-  // Server Actions podem ser chamadas diretamente; o layout não as protege.
-  if (!(await administradorAutenticado())) redirect("/entrar");
   if (formulario.get("confirmacao") !== "sim") return { erro: "Confirme que a Chave atual deixará de valer." };
   const prefixo = String(formulario.get("prefixo") ?? "");
-  try {
-    const { licenca, chave } = await nucleoDaInstancia().trocarChave(prefixo);
-    return { trocada: { chave, prefixo: licenca.prefixo } };
-  } catch (erro) {
-    if (erro instanceof LicencaNaoEncontrada) redirect("/licencas");
-    if (erro instanceof AcaoNaoPermitida) return { erro: erro.message };
-    throw erro;
-  }
+  let trocada: EstadoTrocaDeChave["trocada"];
+  const recusa = await recusaNaLicenca(
+    async () => {
+      const { licenca, chave } = await nucleoDaInstancia().trocarChave(prefixo);
+      trocada = { chave, prefixo: licenca.prefixo };
+    },
+    (erro) => erro instanceof AcaoNaoPermitida,
+  );
+  return recusa ?? { trocada };
 }

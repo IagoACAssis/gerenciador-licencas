@@ -14,7 +14,7 @@ import {
 } from "../acoes";
 import { Estado } from "../tabela";
 import { FormularioAcao } from "./formulario-acao";
-import { FormularioTrocaDeChave } from "./formulario-troca-de-chave";
+import { AreaDaTrocaDeChave, FormularioTrocaDeChave } from "./formulario-troca-de-chave";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
   if (!licenca) notFound();
 
   return (
-    <>
+    <AreaDaTrocaDeChave>
       <p><Link href="/licencas">← Licenças</Link></p>
       <h1>Licença <code>{licenca.prefixo}…</code></h1>
       <section className="cartao">
@@ -202,6 +202,6 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
           </li>
         ))}
       </ol>
-    </>
+    </AreaDaTrocaDeChave>
   );
 }
