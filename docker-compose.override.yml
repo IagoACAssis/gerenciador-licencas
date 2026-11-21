@@ -1,0 +1,10 @@
+# Só para desenvolvimento. O docker compose carrega este arquivo sozinho junto
+# com o docker-compose.yml; na produção, use `docker compose -f docker-compose.yml`.
+services:
+  postgres:
+    # Expõe o Postgres na máquina para `pnpm dev`, `pnpm db:migrar` e `pnpm test`.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORTA:-5432}:5432"
+    volumes:
+      # Cria o banco licencas_teste na primeira inicialização do volume.
+      - ./docker/criar-banco-teste.sql:/docker-entrypoint-initdb.d/criar-banco-teste.sql:ro

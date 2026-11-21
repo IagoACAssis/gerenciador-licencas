@@ -28,12 +28,14 @@ Requisitos: Docker com Docker Compose. Para gerar o hash da senha, também Node 
 3. Suba a aplicação e o banco:
 
    ```sh
-   docker compose up -d --build
+   docker compose -f docker-compose.yml up -d --build
    ```
+
+   O `-f docker-compose.yml` deixa de fora o `docker-compose.override.yml`, que é só de desenvolvimento (expõe o Postgres na máquina e cria o banco de testes). Sem o `-f`, o docker compose carrega o override sozinho.
 
    A cada início, a aplicação aplica as migrações pendentes do banco, em ordem, e só depois passa a atender. O painel fica em <http://localhost:3000>, e `GET /api/saude` informa se a Instância alcança o banco.
 
-Para atualizar a Instância, baixe a versão nova e rode o `docker compose up -d --build` de novo.
+Para atualizar a Instância, baixe a versão nova e rode o mesmo comando de novo.
 
 ### Variáveis de configuração
 
@@ -45,7 +47,7 @@ Para atualizar a Instância, baixe a versão nova e rode o `docker compose up -d
 | `SESSAO_SEGREDO` | sim | Segredo, com no mínimo 32 caracteres, que assina o cookie de sessão. Se for trocado, todas as sessões abertas caem. |
 | `SESSAO_HORAS` | não (8) | Duração da sessão do Administrador. |
 | `APP_PORTA` | não (3000) | Porta da aplicação na máquina. |
-| `POSTGRES_PORTA` | não (5432) | Porta do Postgres na máquina, aberta só em `127.0.0.1`. |
+| `POSTGRES_PORTA` | não (5432) | Só em desenvolvimento: porta do Postgres na máquina, aberta só em `127.0.0.1`. |
 
 Sobre a sessão do Administrador:
 
@@ -55,7 +57,7 @@ Sobre a sessão do Administrador:
 ## Desenvolvimento
 
 ```sh
-docker compose up -d postgres   # Postgres com os bancos licencas e licencas_teste
+docker compose up -d postgres   # com o override: Postgres exposto e com os bancos licencas e licencas_teste
 export DATABASE_URL=postgres://licencas:<senha>@localhost:5432/licencas
 export DATABASE_URL_TESTE=postgres://licencas:<senha>@localhost:5432/licencas_teste
 pnpm db:migrar                  # aplica as migrações no banco de desenvolvimento
