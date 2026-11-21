@@ -49,7 +49,8 @@ export type EventoLicenca =
   | { tipo: "exclusao"; ocorridoEm: Date }
   | { tipo: "restauracao"; ocorridoEm: Date }
   | { tipo: "renovacao"; ocorridoEm: Date; validaAteAnterior: Date; validaAte: Date }
-  | { tipo: "limite_alterado"; ocorridoEm: Date; limiteAnterior: number | null; limiteAtivacoes: number | null };
+  | { tipo: "limite_alterado"; ocorridoEm: Date; limiteAnterior: number | null; limiteAtivacoes: number | null }
+  | { tipo: "troca_de_chave"; ocorridoEm: Date; prefixoAnterior: string };
 
 /** Evento como a ação o descreve; a data é a da transação. */
 type NovoEvento = EventoLicenca extends infer E ? (E extends unknown ? Omit<E, "ocorridoEm"> : never) : never;
@@ -187,6 +188,10 @@ function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): 
     const dados = linha.dados as { limiteAnterior: number | null; limiteAtivacoes: number | null };
     return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm, limiteAnterior: dados.limiteAnterior, limiteAtivacoes: dados.limiteAtivacoes };
   }
+  if (linha.tipo === "troca_de_chave") {
+    const dados = linha.dados as { prefixoAnterior: string };
+    return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm, prefixoAnterior: dados.prefixoAnterior };
+  }
   if (linha.tipo === "renovacao") {
     const dados = linha.dados as { validaAteAnterior: string; validaAte: string };
     return {
@@ -224,6 +229,7 @@ const colunasTravadas = {
   produtoId: licencas.produtoId,
   clienteId: licencas.clienteId,
   excluidaEm: licencas.excluidaEm,
+  prefixoChave: licencas.prefixoChave,
   validaAte: licencas.validaAte,
   limiteAtivacoes: licencas.limiteAtivacoes,
   suspensaEm: licencas.suspensaEm,
@@ -234,6 +240,24 @@ type LicencaTravada = Pick<typeof licencas.$inferSelect, keyof typeof colunasTra
 /** A Revogação é definitiva: nenhuma ação de ciclo de vida muda uma Licença Revogada. */
 function recusarSeRevogada(licenca: LicencaTravada): void {
   if (licenca.revogadaEm) throw new AcaoNaoPermitida("A Licença foi Revogada e não pode mais ser alterada.");
+}
+
+/**
+ * Gera uma Chave nova e a entrega a `gravar`, que a guarda na Licença. Se o prefixo ou
+ * o hash já forem de outra Licença, gera outra e tenta de novo, até TENTATIVAS_DE_CHAVE.
+ */
+async function comChaveNova<T>(
+  bytes: (quantidade: number) => Uint8Array,
+  gravar: (gerada: ReturnType<typeof gerarChave>) => Promise<T>,
+): Promise<T> {
+  for (let tentativa = 1; ; tentativa++) {
+    try {
+      return await gravar(gerarChave(bytes));
+    } catch (erro) {
+      const repetida = violouUnicidade(erro, "licencas_prefixo_chave_unico", "licencas_hash_chave_unico");
+      if (!repetida || tentativa >= TENTATIVAS_DE_CHAVE) throw erro;
+    }
+  }
 }
 
 export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: DependenciasNucleo) {
@@ -289,15 +313,16 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
    * como na Validação, e registra o evento no histórico na mesma transação.
    * `alcance` diz qual Licença a ação encontra: só a em uso (o normal) ou só a
    * excluída (para a restauração); qualquer outra conta como LicencaNaoEncontrada.
+   * Devolve o id da Licença e o instante da ação.
    */
   async function emTransacaoNaLicenca(
     prefixo: string,
     acao: (tx: Transacao, licenca: LicencaTravada, agora: Date) => Promise<NovoEvento>,
     alcance: "em uso" | "excluida" = "em uso",
-  ): Promise<void> {
+  ): Promise<{ id: number; agora: Date }> {
     const normalizado = lerPrefixo(prefixo);
     const agora = relogio.agora();
-    await banco.transaction(async (tx) => {
+    return banco.transaction(async (tx) => {
       const [licenca] =
         normalizado
           ? await tx
@@ -312,8 +337,11 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       if (!encontrada) throw new LicencaNaoEncontrada();
       const { tipo, ...dados } = await acao(tx, licenca, agora);
       await tx.insert(eventosLicenca).values({ licencaId: licenca.id, tipo, dados, ocorridoEm: agora });
+      return { id: licenca.id, agora };
     });
   }
+
+  const bytesAleatorios = (quantidade: number) => aleatoriedade.bytes(quantidade);
 
   async function obterPorId(id: number, agora: Date): Promise<Licenca> {
     const [linha] = await consulta(eq(licencas.id, id));
@@ -328,29 +356,45 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
      */
     async emitirLicenca(dados: DadosEmissao): Promise<{ licenca: Licenca; chave: string }> {
       const agora = relogio.agora();
-      for (let tentativa = 1; ; tentativa++) {
-        try {
-          const { id, chave } = await banco.transaction(async (tx) => {
-            const valores = await validar(tx, dados, agora);
-            const { chave, hash, prefixo } = gerarChave((quantidade) => aleatoriedade.bytes(quantidade));
-            const [licenca] = await tx
-              .insert(licencas)
-              .values({ ...valores, hashChave: hash, prefixoChave: prefixo, emitidaEm: agora })
-              .returning({ id: licencas.id });
-            await tx.insert(eventosLicenca).values({
-              licencaId: licenca!.id,
-              tipo: "emissao",
-              dados: { validaAte: valores.validaAte?.toISOString() ?? null, limiteAtivacoes: valores.limiteAtivacoes },
-              ocorridoEm: agora,
-            });
-            return { id: licenca!.id, chave };
+      return comChaveNova(bytesAleatorios, async ({ chave, hash, prefixo }) => {
+        const id = await banco.transaction(async (tx) => {
+          const valores = await validar(tx, dados, agora);
+          const [licenca] = await tx
+            .insert(licencas)
+            .values({ ...valores, hashChave: hash, prefixoChave: prefixo, emitidaEm: agora })
+            .returning({ id: licencas.id });
+          await tx.insert(eventosLicenca).values({
+            licencaId: licenca!.id,
+            tipo: "emissao",
+            dados: { validaAte: valores.validaAte?.toISOString() ?? null, limiteAtivacoes: valores.limiteAtivacoes },
+            ocorridoEm: agora,
           });
-          return { licenca: await obterPorId(id, agora), chave };
-        } catch (erro) {
-          const repetida = violouUnicidade(erro, "licencas_prefixo_chave_unico", "licencas_hash_chave_unico");
-          if (!repetida || tentativa >= TENTATIVAS_DE_CHAVE) throw erro;
-        }
-      }
+          return licenca!.id;
+        });
+        return { licenca: await obterPorId(id, agora), chave };
+      });
+    },
+
+    /**
+     * Troca de chave: dá à Licença uma Chave de licença nova e a devolve. Além da
+     * emissão, é o único caso de uso que devolve a Chave (ADR-0003). A antiga deixa de
+     * valer na hora; Ativações, data de validade, estado e histórico continuam os
+     * mesmos, e a troca entra no histórico. A Licença passa a ser encontrada pelo
+     * prefixo novo. Lança LicencaNaoEncontrada para um prefixo sem Licença e
+     * AcaoNaoPermitida para Licença Revogada.
+     */
+    async trocarChave(prefixo: string): Promise<{ licenca: Licenca; chave: string }> {
+      return comChaveNova(bytesAleatorios, async (nova) => {
+        const { id, agora } = await emTransacaoNaLicenca(prefixo, async (tx, licenca) => {
+          recusarSeRevogada(licenca);
+          await tx
+            .update(licencas)
+            .set({ hashChave: nova.hash, prefixoChave: nova.prefixo })
+            .where(eq(licencas.id, licenca.id));
+          return { tipo: "troca_de_chave", prefixoAnterior: emGrupos(licenca.prefixoChave) };
+        });
+        return { licenca: await obterPorId(id, agora), chave: nova.chave };
+      });
     },
 
     /** Lista as Licenças com estado e indicações, das mais novas para as mais antigas. */

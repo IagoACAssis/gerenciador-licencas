@@ -16,6 +16,7 @@ import { Estado } from "../tabela";
 import { FormularioAcao } from "./formulario-acao";
 import { excluirLicenca } from "../../excluidos/acoes";
 import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
+import { AreaDaTrocaDeChave, FormularioTrocaDeChave } from "./formulario-troca-de-chave";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ function descreverEvento(evento: EventoLicenca): string {
       return "Exclusão.";
     case "restauracao":
       return "Restauração.";
+    case "troca_de_chave":
+      return `Troca de chave: a Chave que começava com ${evento.prefixoAnterior} deixou de valer.`;
     case "emissao": {
       const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
       return `Emissão: ${validade}, Limite de ativações ${descreverLimite(evento.limiteAtivacoes)}.`;
@@ -58,7 +61,7 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
   if (!licenca) notFound();
 
   return (
-    <>
+    <AreaDaTrocaDeChave>
       <p><Link href="/licencas">← Licenças</Link></p>
       <h1>Licença <code>{licenca.prefixo}…</code></h1>
       <section className="cartao">
@@ -126,6 +129,7 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
               </label>
               <button type="submit">Revogar</button>
             </FormularioAcao>
+            <FormularioTrocaDeChave prefixo={licenca.prefixo} />
           </>
         )}
       </section>
@@ -210,6 +214,6 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
         responder "chave inválida". A restauração a devolve como estava, com a mesma Chave de licença.
       </p>
       <FormularioExclusao acao={excluirLicenca} campos={{ prefixo: licenca.prefixo }} item="esta Licença" />
-    </>
+    </AreaDaTrocaDeChave>
   );
 }

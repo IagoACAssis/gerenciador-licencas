@@ -77,13 +77,14 @@ describe("Exclusão e restauração", () => {
       expect(await validar("pc-01")).toEqual({ resultado: "aceita", motivo: null });
     });
 
-    it("excluída, não aceita ações de ciclo de vida nem nova Exclusão", async () => {
+    it("excluída, não aceita ações de ciclo de vida, Troca de chave nem nova Exclusão", async () => {
       const { prefixo } = await cenario({ validaAte: daquiA(30) });
       await nucleo.excluirLicenca(prefixo);
 
       for (const acao of [
         () => nucleo.suspenderLicenca(prefixo),
         () => nucleo.renovarLicenca(prefixo, daquiA(60)),
+        () => nucleo.trocarChave(prefixo),
         () => nucleo.excluirLicenca(prefixo),
       ]) {
         await expect(acao()).rejects.toBeInstanceOf(LicencaNaoEncontrada);

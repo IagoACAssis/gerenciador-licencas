@@ -9,7 +9,7 @@ Cada regra do domínio e cada fato do banco têm uma única fonte da verdade, e 
 As fontes de hoje:
 
 - `src/nucleo/estado.ts`: estado e indicações da Licença ("a vencer", "em Carência"), fim da Carência, fim da Tolerância offline, Limite de ativações que vale (o próprio da Licença ou o padrão do Produto) e início da janela da Cota de substituições. Uma regra nova de cálculo da Licença entra aqui.
-- `src/nucleo/licencas.ts`: o que torna inválidos a data de validade e o Limite de ativações próprio (`erroNaDataDeValidade` e `erroNoLimite`, usados na Emissão, na Renovação e na alteração do limite), e a recusa de qualquer ação de ciclo de vida em Licença Revogada (`recusarSeRevogada`).
+- `src/nucleo/licencas.ts`: o que torna inválidos a data de validade e o Limite de ativações próprio (`erroNaDataDeValidade` e `erroNoLimite`, usados na Emissão, na Renovação e na alteração do limite), a recusa de qualquer ação de ciclo de vida em Licença Revogada (`recusarSeRevogada`) e a gravação de uma Chave nova com retentativa em colisão de prefixo ou hash (`comChaveNova`, usada na Emissão e na Troca de chave).
 - `src/nucleo/exclusao.ts`: Produto e Cliente não excluídos (`produtoNaoExcluido`, `clienteNaoExcluido`), o que é uma Licença em uso (nem ela, nem o Produto, nem o Cliente dela excluídos: `licencaEmUso` nas consultas e `estaEmUso` com a Licença travada), quais Licenças impedem a Exclusão do Produto ou do Cliente (`recusarSeHaLicencaEmVigor`) e quando a restauração de uma Licença é recusada (`recusarSeDonoExcluido`).
 - `src/nucleo/substituicoes.ts`: quantas Substituições de ativação contam agora para a Cota de substituições.
 - `src/nucleo/chave-licenca.ts`: formato, normalização, hash e prefixo da Chave de licença.
