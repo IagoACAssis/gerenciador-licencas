@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import type { Licenca, ResumoInstancia } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+import { LICENCAS_A_VENCER } from "@/componentes/areas-do-painel";
 import { classeBotao } from "@/componentes/botoes";
+import { CLASSE_LINHA_COM_ACOES, EstadoVazio, TabelaComAcoes } from "@/componentes/lista";
+import { CabecalhoDaPagina } from "@/componentes/pagina";
 import { COR_DO_TOM, SeloDeEstado, situacaoDaLicenca } from "@/componentes/selo-de-estado";
-import { descreverPrazo, formatarDataHora, haQuantoTempo } from "./formatacao";
+import { contar, descreverPrazoDaLicenca, formatarDataHora, haQuantoTempo } from "./formatacao";
 import { DialogoReativar, DialogoRenovar } from "./licencas/dialogos-de-ciclo-de-vida";
 import { descreverEvento } from "./licencas/eventos";
 
@@ -22,7 +24,7 @@ export default async function Inicio() {
   if (resumo.contagens.produtos === 0) {
     return (
       <div className="grid gap-10">
-        <Cabecalho />
+        <CabecalhoDaPagina titulo={TITULO} descricao={DESCRICAO} />
         <section className="grid max-w-xl animate-entrar justify-items-start gap-3 rounded-xl border border-dashed p-8 [animation-delay:60ms]">
           <h2 className="text-lg font-semibold tracking-tight">Comece pelo primeiro Produto</h2>
           <p className="text-sm leading-relaxed text-suave">
@@ -36,10 +38,16 @@ export default async function Inicio() {
 
   return (
     <div className="grid gap-10">
-      <Cabecalho>
-        <Link href="/clientes/novo" className={classeBotao("secundario")}>Cadastrar Cliente</Link>
-        <Link href="/licencas/nova" className={classeBotao("primario")}>Emitir Licença</Link>
-      </Cabecalho>
+      <CabecalhoDaPagina
+        titulo={TITULO}
+        descricao={DESCRICAO}
+        acoes={
+          <>
+            <Link href="/clientes/novo" className={classeBotao("secundario")}>Cadastrar Cliente</Link>
+            <Link href="/licencas/nova" className={classeBotao("primario")}>Emitir Licença</Link>
+          </>
+        }
+      />
       <Contagens resumo={resumo} />
       <PedemAtencao licencas={resumo.pedemAtencao} agora={agora} />
       <div className="grid animate-entrar gap-8 [animation-delay:180ms] lg:grid-cols-2">
@@ -50,17 +58,8 @@ export default async function Inicio() {
   );
 }
 
-function Cabecalho({ children }: { children?: ReactNode }) {
-  return (
-    <div className="flex animate-entrar flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Visão geral</h1>
-        <p className="mt-1 text-suave">Licenças, Clientes e Produtos desta Instância.</p>
-      </div>
-      {children && <div className="flex flex-wrap gap-2">{children}</div>}
-    </div>
-  );
-}
+const TITULO = "Visão geral";
+const DESCRICAO = "Licenças, Clientes e Produtos desta Instância.";
 
 const CLASSE_CARTAO = "rounded-xl border bg-superficie p-5";
 
@@ -79,7 +78,7 @@ function Contagens({ resumo }: { resumo: ResumoInstancia }) {
         <div className="mt-2 flex flex-wrap items-baseline gap-x-3">
           <span className="text-5xl font-semibold tracking-tight tabular-nums">{contagens.licencas}</span>
           <span className="text-sm text-suave tabular-nums">
-            {contagens.licencasAtivas} {contagens.licencasAtivas === 1 ? "Ativa" : "Ativas"}
+            {contar(contagens.licencasAtivas, "Ativa", "Ativas")}
           </span>
         </div>
         <BarraDeSituacoes porSituacao={resumo.porSituacao} />
@@ -146,11 +145,6 @@ function BarraDeSituacoes({ porSituacao }: { porSituacao: ResumoInstancia["porSi
   );
 }
 
-/** O prazo em linguagem direta; a Suspensa perpétua não tem prazo. */
-function prazo(licenca: Licenca, agora: Date): string {
-  return licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "sem data de validade";
-}
-
 function PedemAtencao({ licencas, agora }: { licencas: Licenca[]; agora: Date }) {
   return (
     <section className="animate-entrar [animation-delay:120ms]" aria-labelledby="atencao-titulo">
@@ -161,58 +155,46 @@ function PedemAtencao({ licencas, agora }: { licencas: Licenca[]; agora: Date })
             <span className="rounded-full bg-alerta-suave px-2 text-xs font-medium text-alerta tabular-nums">{licencas.length}</span>
           )}
         </h2>
-        <Link href="/licencas?aVencer=1" className="rounded-md text-sm text-acento hover:underline">
+        <Link href={LICENCAS_A_VENCER} className="rounded-md text-sm text-acento hover:underline">
           Ver todas a vencer →
         </Link>
       </div>
       {licencas.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-suave">
-          Tudo em ordem: nenhuma Licença a vencer, em Carência ou Suspensa.
-        </p>
+        <EstadoVazio titulo="Tudo em ordem" compacto>
+          Nenhuma Licença a vencer, em Carência ou Suspensa.
+        </EstadoVazio>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-superficie">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-suave">
-              <tr className="border-b">
-                <th scope="col" className="px-4 py-2.5 font-medium">Licença</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Cliente</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Produto</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Estado</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Prazo</th>
-                <th scope="col" className="px-4 py-2.5"><span className="sr-only">Ação</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-borda">
-              {licencas.map((licenca) => (
-                <tr key={licenca.prefixo} className="transition-colors duration-150 hover:bg-elevada/50">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <Link href={`/licencas/${licenca.prefixo}`} className="rounded-md font-mono text-[13px] hover:text-acento">
-                      {licenca.prefixo}…
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 font-medium">
-                    <Link href={`/clientes/${licenca.cliente.id}`} className="rounded-md hover:text-acento">
-                      {licenca.cliente.nome}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-suave">{licenca.produto.nome}</td>
-                  <td className="px-4 py-3"><SeloDeEstado licenca={licenca} /></td>
-                  <td className="px-4 py-3 whitespace-nowrap text-suave">{prazo(licenca, agora)}</td>
-                  <td className="px-4 py-3 text-right">
-                    {licenca.estado === "Suspensa" ? (
-                      <DialogoReativar prefixo={licenca.prefixo} />
-                    ) : (
-                      // Em Carência e a vencer sempre têm data de validade.
-                      licenca.validaAte && (
-                        <DialogoRenovar prefixo={licenca.prefixo} validaAte={licenca.validaAte} estilo="secundario" />
-                      )
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TabelaComAcoes colunas={["Licença", "Cliente", "Produto", "Estado", "Prazo"]} acao="Ação">
+          {licencas.map((licenca) => (
+            <tr key={licenca.prefixo} className={CLASSE_LINHA_COM_ACOES}>
+              <td className="px-4 py-3 whitespace-nowrap">
+                <Link href={`/licencas/${licenca.prefixo}`} className="rounded-md font-mono text-[13px] hover:text-acento">
+                  {licenca.prefixo}…
+                </Link>
+              </td>
+              <td className="px-4 py-3 font-medium">
+                <Link href={`/clientes/${licenca.cliente.id}`} className="rounded-md hover:text-acento">
+                  {licenca.cliente.nome}
+                </Link>
+              </td>
+              <td className="px-4 py-3 text-suave">{licenca.produto.nome}</td>
+              <td className="px-4 py-3"><SeloDeEstado licenca={licenca} /></td>
+              <td className="px-4 py-3 whitespace-nowrap text-suave">
+                {descreverPrazoDaLicenca(licenca, agora, { prazoDaSuspensa: true })}
+              </td>
+              <td className="px-4 py-3 text-right">
+                {licenca.estado === "Suspensa" ? (
+                  <DialogoReativar prefixo={licenca.prefixo} />
+                ) : (
+                  // Em Carência e a vencer sempre têm data de validade.
+                  licenca.validaAte && (
+                    <DialogoRenovar prefixo={licenca.prefixo} validaAte={licenca.validaAte} estilo="secundario" />
+                  )
+                )}
+              </td>
+            </tr>
+          ))}
+        </TabelaComAcoes>
       )}
     </section>
   );
@@ -223,7 +205,7 @@ function AtividadeRecente({ atividade, agora }: { atividade: ResumoInstancia["at
     <section aria-labelledby="atividade-titulo">
       <h2 id="atividade-titulo" className="mb-3 text-lg font-semibold tracking-tight">Atividade recente</h2>
       {atividade.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-suave">Nenhuma atividade ainda.</p>
+        <EstadoVazio titulo="Nenhuma atividade ainda" compacto />
       ) : (
         <ol className="divide-y divide-borda overflow-hidden rounded-xl border bg-superficie">
           {atividade.map(({ evento, licenca }, i) => (

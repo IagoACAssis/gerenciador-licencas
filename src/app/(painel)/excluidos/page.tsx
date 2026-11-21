@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { DialogoDeConfirmacao } from "@/componentes/dialogo-de-confirmacao";
-import { EstadoVazio } from "@/componentes/lista";
+import { CLASSE_LINHA_COM_ACOES, EstadoVazio, TabelaComAcoes } from "@/componentes/lista";
 import { CabecalhoDaPagina } from "@/componentes/pagina";
 import { formatarDataHora } from "../formatacao";
 import { restaurarCliente, restaurarLicenca, restaurarProduto } from "./acoes";
@@ -117,20 +117,7 @@ function Secao({ id, titulo, quantidade, colunas, tituloDaData, children }: {
         {titulo}
         <span className="rounded-full bg-elevada px-2 text-xs font-medium text-suave tabular-nums">{quantidade}</span>
       </h2>
-      <div className="overflow-x-auto rounded-xl border bg-superficie">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs text-suave">
-            <tr className="border-b">
-              {colunas.map((coluna) => (
-                <th key={coluna} scope="col" className="px-4 py-2.5 font-medium whitespace-nowrap">{coluna}</th>
-              ))}
-              <th scope="col" className="px-4 py-2.5 font-medium whitespace-nowrap">{tituloDaData}</th>
-              <th scope="col" className="px-4 py-2.5"><span className="sr-only">Ação</span></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borda">{children}</tbody>
-        </table>
-      </div>
+      <TabelaComAcoes colunas={[...colunas, tituloDaData]} acao="Ação">{children}</TabelaComAcoes>
     </section>
   );
 }
@@ -138,7 +125,7 @@ function Secao({ id, titulo, quantidade, colunas, tituloDaData, children }: {
 /** Uma linha de excluído: as células do item (`children`), a data da Exclusão e a ação de restaurar. */
 function Linha({ excluidoEm, acao, children }: { excluidoEm: Date; acao: ReactNode; children: ReactNode }) {
   return (
-    <tr className="transition-colors duration-150 hover:bg-elevada/50">
+    <tr className={CLASSE_LINHA_COM_ACOES}>
       {children}
       <td className="px-4 py-3 whitespace-nowrap text-suave">
         <time dateTime={excluidoEm.toISOString()}>{formatarDataHora(excluidoEm)}</time>

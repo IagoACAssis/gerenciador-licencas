@@ -21,7 +21,9 @@ const obterProduto = cache((identificador: string) => nucleoDaInstancia().obterP
 
 export async function generateMetadata({ params }: { params: Promise<{ identificador: string }> }): Promise<Metadata> {
   const produto = await obterProduto((await params).identificador);
-  return { title: produto?.nome };
+  // Item inexistente: o título vem do not-found.tsx, como a página.
+  if (!produto) notFound();
+  return { title: produto.nome };
 }
 
 const DESCRICAO_DA_EXCLUSAO =

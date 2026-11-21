@@ -7,7 +7,7 @@ import { classeBotao } from "@/componentes/botoes";
 import { Marca } from "@/componentes/marca";
 import { PaletaDeComandos } from "@/componentes/paleta-de-comandos";
 import { SeletorDeTema } from "@/componentes/seletor-de-tema";
-import { Abas } from "./abas";
+import { NavegacaoDoPainel } from "./navegacao-do-painel";
 import { AVISOS_NA_URL } from "./avisos";
 
 async function sairDoPainel() {
@@ -37,7 +37,7 @@ export default async function LayoutPainel({ children }: { children: ReactNode }
           </div>
         </div>
         <div className="mx-auto max-w-7xl">
-          <Abas />
+          <NavegacaoDoPainel />
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10">

@@ -4,6 +4,7 @@ import { ESTADOS_LICENCA } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { classeBotao } from "@/componentes/botoes";
 import { CLASSE_CAMPO } from "@/componentes/campos";
+import { FILTRO_A_VENCER, LICENCAS_A_VENCER } from "@/componentes/areas-do-painel";
 import { BarraDeFiltros, EstadoVazio } from "@/componentes/lista";
 import { CabecalhoDaPagina } from "@/componentes/pagina";
 import { parametro } from "../formatacao";
@@ -12,10 +13,10 @@ import { TabelaLicencas } from "./tabela";
 
 export const dynamic = "force-dynamic";
 
-type Parametros = Record<"produto" | "cliente" | "estado" | "prefixo" | "aVencer", string | string[] | undefined>;
+type Parametros = Record<"produto" | "cliente" | "estado" | "prefixo" | typeof FILTRO_A_VENCER.nome, string | string[] | undefined>;
 
 function soAVencer(busca: Partial<Parametros>): boolean {
-  return parametro(busca.aVencer) === "1";
+  return parametro(busca[FILTRO_A_VENCER.nome]) === FILTRO_A_VENCER.valor;
 }
 
 function titulo(aVencer: boolean): string {
@@ -66,10 +67,10 @@ export default async function Licencas({ searchParams }: { searchParams: Promise
       <div className="grid gap-3">
         <nav aria-label="Quais Licenças" className="flex w-fit animate-entrar gap-1 rounded-lg bg-elevada p-1 text-sm">
           <OpcaoDeLista href="/licencas" atual={!aVencer}>Todas</OpcaoDeLista>
-          <OpcaoDeLista href="/licencas?aVencer=1" atual={aVencer}>A vencer</OpcaoDeLista>
+          <OpcaoDeLista href={LICENCAS_A_VENCER} atual={aVencer}>A vencer</OpcaoDeLista>
         </nav>
         <BarraDeFiltros rotulo="Filtrar Licenças">
-          {aVencer && <input type="hidden" name="aVencer" value="1" />}
+          {aVencer && <input type="hidden" name={FILTRO_A_VENCER.nome} value={FILTRO_A_VENCER.valor} />}
           <input
             name="prefixo"
             type="search"
@@ -98,7 +99,7 @@ export default async function Licencas({ searchParams }: { searchParams: Promise
       ) : filtrando ? (
         <EstadoVazio
           titulo="Nenhuma Licença com esses filtros"
-          acao={<Link href={aVencer ? "/licencas?aVencer=1" : "/licencas"} className={classeBotao("secundario")}>Limpar filtros</Link>}
+          acao={<Link href={aVencer ? LICENCAS_A_VENCER : "/licencas"} className={classeBotao("secundario")}>Limpar filtros</Link>}
         >
           Mude os filtros ou limpe-os para ver {aVencer ? "todas as Licenças a vencer" : "todas as Licenças"}.
         </EstadoVazio>

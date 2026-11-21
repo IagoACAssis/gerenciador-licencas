@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { classeDoSublinhado } from "@/componentes/abas";
 import { AREAS_DO_PAINEL } from "@/componentes/areas-do-painel";
 
 function abaAtual(caminho: string, href: string): boolean {
@@ -8,7 +9,7 @@ function abaAtual(caminho: string, href: string): boolean {
 }
 
 /** As abas da barra do topo, com a atual destacada. No celular, rolam na horizontal. */
-export function Abas() {
+export function NavegacaoDoPainel() {
   const caminho = usePathname();
   return (
     <nav aria-label="Painel" className="-mb-px flex gap-1 overflow-x-auto px-2 [scrollbar-width:none] md:px-6">
@@ -24,12 +25,7 @@ export function Abas() {
             }`}
           >
             {aba.rotulo}
-            <span
-              aria-hidden="true"
-              className={`absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-acento transition-transform duration-200 ${
-                atual ? "scale-x-100" : "scale-x-0"
-              }`}
-            />
+            <span aria-hidden="true" className={`inset-x-3 ${classeDoSublinhado(atual)}`} />
           </Link>
         );
       })}

@@ -1,7 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
-import { AREAS_DO_PAINEL } from "./areas-do-painel";
+import { contar } from "@/app/(painel)/formatacao";
+import { AREAS_DO_PAINEL, LICENCAS_A_VENCER } from "./areas-do-painel";
 import { classeBotao } from "./botoes";
 import { carregarItensDaPaleta, type ItemDaPaleta } from "./paleta-de-comandos-acoes";
 
@@ -10,7 +11,7 @@ const ITENS_FIXOS: ItemDaPaleta[] = [
   { grupo: "Ação", rotulo: "Emitir Licença", href: "/licencas/nova" },
   { grupo: "Ação", rotulo: "Cadastrar Cliente", href: "/clientes/novo" },
   { grupo: "Ação", rotulo: "Cadastrar Produto", href: "/produtos/novo" },
-  { grupo: "Ação", rotulo: "Licenças a vencer", href: "/licencas?aVencer=1" },
+  { grupo: "Ação", rotulo: "Licenças a vencer", href: LICENCAS_A_VENCER },
   ...AREAS_DO_PAINEL.map((area): ItemDaPaleta => ({ grupo: "Ir para", rotulo: area.rotulo, href: area.href })),
 ];
 
@@ -130,7 +131,7 @@ export function PaletaDeComandos() {
   const carregando = doServidor === null && !falhou;
   const situacao =
     filtrados.length > 0
-      ? `${filtrados.length} ${filtrados.length === 1 ? "resultado" : "resultados"}`
+      ? contar(filtrados.length, "resultado", "resultados")
       : carregando
         ? "Carregando…"
         : "Nada encontrado.";
