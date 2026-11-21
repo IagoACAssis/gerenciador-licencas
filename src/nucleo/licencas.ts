@@ -41,7 +41,12 @@ export interface Licenca {
 export type EventoLicenca =
   | { tipo: "emissao"; ocorridoEm: Date; validaAte: Date | null; limiteAtivacoes: number | null }
   | { tipo: "ativacao_removida"; ocorridoEm: Date; dispositivo: string; nomeDispositivo: string | null }
-  | { tipo: "contagem_substituicoes_zerada"; ocorridoEm: Date };
+  | { tipo: "contagem_substituicoes_zerada"; ocorridoEm: Date }
+  | { tipo: "suspensao"; ocorridoEm: Date }
+  | { tipo: "reativacao"; ocorridoEm: Date }
+  | { tipo: "revogacao"; ocorridoEm: Date }
+  | { tipo: "renovacao"; ocorridoEm: Date; validaAteAnterior: Date; validaAte: Date }
+  | { tipo: "limite_alterado"; ocorridoEm: Date; limiteAnterior: number | null; limiteAtivacoes: number | null };
 
 /** Evento como a ação o descreve; a data é a da transação. */
 type NovoEvento = EventoLicenca extends infer E ? (E extends unknown ? Omit<E, "ocorridoEm"> : never) : never;
@@ -103,6 +108,14 @@ export class AtivacaoNaoEncontrada extends Error {
   }
 }
 
+/** Ação de ciclo de vida que o estado atual da Licença não permite, com o motivo na mensagem. */
+export class AcaoNaoPermitida extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = "AcaoNaoPermitida";
+  }
+}
+
 export class LicencaNaoEncontrada extends Error {
   constructor() {
     super("Licença não encontrada.");
@@ -127,6 +140,8 @@ const colunas = {
   cotaSubstituicoesQuantidade: produtos.cotaSubstituicoesQuantidade,
   cotaSubstituicoesDias: produtos.cotaSubstituicoesDias,
   contagemSubstituicoesZeradaEm: licencas.contagemSubstituicoesZeradaEm,
+  suspensaEm: licencas.suspensaEm,
+  revogadaEm: licencas.revogadaEm,
   clienteId: clientes.id,
   clienteNome: clientes.nome,
   clienteEmail: clientes.email,
@@ -151,10 +166,25 @@ function paraLicenca(linha: Linha, agora: Date): Licenca {
 }
 
 function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): EventoLicenca {
-  if (linha.tipo === "contagem_substituicoes_zerada") return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm };
+  if (linha.tipo === "contagem_substituicoes_zerada" || linha.tipo === "suspensao" || linha.tipo === "reativacao" || linha.tipo === "revogacao") {
+    return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm };
+  }
   if (linha.tipo === "ativacao_removida") {
     const dados = linha.dados as { dispositivo: string; nomeDispositivo: string | null };
     return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm, dispositivo: dados.dispositivo, nomeDispositivo: dados.nomeDispositivo };
+  }
+  if (linha.tipo === "limite_alterado") {
+    const dados = linha.dados as { limiteAnterior: number | null; limiteAtivacoes: number | null };
+    return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm, limiteAnterior: dados.limiteAnterior, limiteAtivacoes: dados.limiteAtivacoes };
+  }
+  if (linha.tipo === "renovacao") {
+    const dados = linha.dados as { validaAteAnterior: string; validaAte: string };
+    return {
+      tipo: linha.tipo,
+      ocorridoEm: linha.ocorridoEm,
+      validaAteAnterior: new Date(dados.validaAteAnterior),
+      validaAte: new Date(dados.validaAte),
+    };
   }
   const dados = linha.dados as { validaAte: string | null; limiteAtivacoes: number | null };
   return {
@@ -163,6 +193,27 @@ function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): 
     validaAte: dados.validaAte ? new Date(dados.validaAte) : null,
     limiteAtivacoes: dados.limiteAtivacoes,
   };
+}
+
+/** Mensagem para uma data de validade inválida ou que não está no futuro; undefined se ela servir. */
+function erroNaDataDeValidade(validaAte: Date, agora: Date): string | undefined {
+  if (Number.isNaN(validaAte.getTime())) return "Informe uma data válida.";
+  if (validaAte <= agora) return "A data de validade precisa estar no futuro.";
+  return undefined;
+}
+
+/** Mensagem para um Limite de ativações próprio inválido; undefined se ele servir (null = padrão do Produto). */
+function erroNoLimite(limite: number | null): string | undefined {
+  if (limite === null || (Number.isInteger(limite) && limite >= 0 && limite <= MAIOR_INTEIRO)) return undefined;
+  return "Informe um número inteiro de zero ou mais, ou deixe vazio para seguir o padrão do Produto.";
+}
+
+/** Licença travada na transação de uma ação do Administrador, com o que as recusas precisam. */
+type LicencaTravada = Pick<typeof licencas.$inferSelect, "id" | "validaAte" | "limiteAtivacoes" | "suspensaEm" | "revogadaEm">;
+
+/** A Revogação é definitiva: nenhuma ação de ciclo de vida muda uma Licença Revogada. */
+function recusarSeRevogada(licenca: LicencaTravada): void {
+  if (licenca.revogadaEm) throw new AcaoNaoPermitida("A Licença foi Revogada e não pode mais ser alterada.");
 }
 
 export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: DependenciasNucleo) {
@@ -190,13 +241,12 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
     if (!cliente) erros.cliente = "Escolha um Cliente cadastrado.";
 
     const validaAte = dados.validaAte ?? null;
-    if (validaAte && Number.isNaN(validaAte.getTime())) erros.validaAte = "Informe uma data válida.";
-    else if (validaAte && validaAte <= agora) erros.validaAte = "A data de validade precisa estar no futuro.";
+    const erroNaData = validaAte && erroNaDataDeValidade(validaAte, agora);
+    if (erroNaData) erros.validaAte = erroNaData;
 
     const limite = dados.limiteAtivacoes ?? null;
-    if (limite !== null && (!Number.isInteger(limite) || limite < 0 || limite > MAIOR_INTEIRO)) {
-      erros.limiteAtivacoes = "Informe um número inteiro de zero ou mais, ou deixe vazio para seguir o padrão do Produto.";
-    }
+    const erroNoLimiteInformado = erroNoLimite(limite);
+    if (erroNoLimiteInformado) erros.limiteAtivacoes = erroNoLimiteInformado;
 
     if (!produto || !cliente || Object.keys(erros).length > 0) throw new DadosDeLicencaInvalidos(erros);
     return { produtoId: produto.id, clienteId: cliente.id, validaAte, limiteAtivacoes: limite };
@@ -208,14 +258,24 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
    */
   async function emTransacaoNaLicenca(
     prefixo: string,
-    acao: (tx: Transacao, licenca: { id: number }, agora: Date) => Promise<NovoEvento>,
+    acao: (tx: Transacao, licenca: LicencaTravada, agora: Date) => Promise<NovoEvento>,
   ): Promise<void> {
     const normalizado = lerPrefixo(prefixo);
     const agora = relogio.agora();
     await banco.transaction(async (tx) => {
       const [licenca] =
         normalizado
-          ? await tx.select({ id: licencas.id }).from(licencas).where(eq(licencas.prefixoChave, normalizado)).for("update")
+          ? await tx
+              .select({
+                id: licencas.id,
+                validaAte: licencas.validaAte,
+                limiteAtivacoes: licencas.limiteAtivacoes,
+                suspensaEm: licencas.suspensaEm,
+                revogadaEm: licencas.revogadaEm,
+              })
+              .from(licencas)
+              .where(eq(licencas.prefixoChave, normalizado))
+              .for("update")
           : [];
       if (!licenca) throw new LicencaNaoEncontrada();
       const { tipo, ...dados } = await acao(tx, licenca, agora);
@@ -306,6 +366,81 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       await emTransacaoNaLicenca(prefixo, async (tx, licenca, agora) => {
         await tx.update(licencas).set({ contagemSubstituicoesZeradaEm: agora }).where(eq(licencas.id, licenca.id));
         return { tipo: "contagem_substituicoes_zerada" };
+      });
+    },
+
+    /**
+     * Renovação: muda só a data de validade, inclusive de Licença Expirada, que volta
+     * a ser Ativa. A nova data precisa estar no futuro e ser posterior à atual. Licença
+     * perpétua não é renovada. Recusa com DadosDeLicencaInvalidos, e Licença Revogada
+     * com AcaoNaoPermitida.
+     */
+    async renovarLicenca(prefixo: string, validaAte: Date): Promise<void> {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca, agora) => {
+        recusarSeRevogada(licenca);
+        const anterior = licenca.validaAte;
+        if (!anterior) {
+          throw new DadosDeLicencaInvalidos({ validaAte: "Licença perpétua não tem data de validade para renovar." });
+        }
+        const erro = erroNaDataDeValidade(validaAte, agora) ??
+          (validaAte <= anterior ? "A nova data de validade precisa ser posterior à atual." : undefined);
+        if (erro) throw new DadosDeLicencaInvalidos({ validaAte: erro });
+        await tx.update(licencas).set({ validaAte }).where(eq(licencas.id, licenca.id));
+        return { tipo: "renovacao", validaAteAnterior: anterior, validaAte };
+      });
+    },
+
+    /**
+     * Muda o Limite de ativações próprio da Licença; null volta ao padrão do Produto.
+     * Um limite abaixo das Ativações existentes não remove nenhuma. Recusa limite
+     * inválido com DadosDeLicencaInvalidos e Licença Revogada com AcaoNaoPermitida.
+     */
+    async alterarLimiteDeAtivacoes(prefixo: string, limiteAtivacoes: number | null): Promise<void> {
+      const erro = erroNoLimite(limiteAtivacoes);
+      if (erro) throw new DadosDeLicencaInvalidos({ limiteAtivacoes: erro });
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca) => {
+        recusarSeRevogada(licenca);
+        await tx.update(licencas).set({ limiteAtivacoes }).where(eq(licencas.id, licenca.id));
+        return { tipo: "limite_alterado", limiteAnterior: licenca.limiteAtivacoes, limiteAtivacoes };
+      });
+    },
+
+    /**
+     * Suspende a Licença: as Ativações são mantidas, mas a Validação passa a recusá-las.
+     * Recusa (AcaoNaoPermitida) Licença Revogada ou já Suspensa.
+     */
+    async suspenderLicenca(prefixo: string): Promise<void> {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca, agora) => {
+        recusarSeRevogada(licenca);
+        if (licenca.suspensaEm) throw new AcaoNaoPermitida("A Licença já está Suspensa.");
+        await tx.update(licencas).set({ suspensaEm: agora }).where(eq(licencas.id, licenca.id));
+        return { tipo: "suspensao" };
+      });
+    },
+
+    /**
+     * Desfaz a suspensão. O estado volta a ser o calculado (pode ser Expirada se a
+     * data de validade passou durante a suspensão) e as Ativações voltam a valer.
+     * Recusa (AcaoNaoPermitida) Licença Revogada ou que não está Suspensa.
+     */
+    async reativarLicenca(prefixo: string): Promise<void> {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca) => {
+        recusarSeRevogada(licenca);
+        if (!licenca.suspensaEm) throw new AcaoNaoPermitida("A Licença não está Suspensa.");
+        await tx.update(licencas).set({ suspensaEm: null }).where(eq(licencas.id, licenca.id));
+        return { tipo: "reativacao" };
+      });
+    },
+
+    /**
+     * Revogação: encerra a Licença em definitivo. Depois dela, a Validação recusa a
+     * Licença e nenhuma ação de ciclo de vida a altera (AcaoNaoPermitida).
+     */
+    async revogarLicenca(prefixo: string): Promise<void> {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca, agora) => {
+        recusarSeRevogada(licenca);
+        await tx.update(licencas).set({ revogadaEm: agora }).where(eq(licencas.id, licenca.id));
+        return { tipo: "revogacao" };
       });
     },
 

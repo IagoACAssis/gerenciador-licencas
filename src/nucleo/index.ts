@@ -23,6 +23,7 @@ export {
 } from "./clientes.ts";
 
 export {
+  AcaoNaoPermitida,
   AtivacaoNaoEncontrada,
   DadosDeLicencaInvalidos,
   ESTADOS_LICENCA,
