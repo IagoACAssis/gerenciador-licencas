@@ -56,23 +56,33 @@ export interface EstadoAcaoNaLicenca {
 }
 
 /**
- * Roda a ação e volta ao detalhe da Licença; Licença inexistente volta à lista.
- * Os erros que o detalhe sabe mostrar (os de `recusas`) voltam como mensagem.
+ * Roda a ação do Administrador sobre a Licença; Licença inexistente volta à lista.
+ * Devolve a recusa que o detalhe sabe mostrar (as de `recusas`), ou undefined se deu certo.
  */
-async function executarNaLicenca(
-  prefixo: string,
+async function recusaNaLicenca(
   acao: () => Promise<void>,
   recusas: (erro: unknown) => erro is Error,
-): Promise<EstadoAcaoNaLicenca> {
+): Promise<EstadoAcaoNaLicenca | undefined> {
   // Server Actions podem ser chamadas diretamente; o layout não as protege.
   if (!(await administradorAutenticado())) redirect("/entrar");
   try {
     await acao();
+    return undefined;
   } catch (erro) {
     if (erro instanceof LicencaNaoEncontrada) redirect("/licencas");
     if (recusas(erro)) return { erro: erro.message };
     throw erro;
   }
+}
+
+/** Roda a ação e volta ao detalhe da Licença, ou devolve a recusa como mensagem. */
+async function executarNaLicenca(
+  prefixo: string,
+  acao: () => Promise<void>,
+  recusas: (erro: unknown) => erro is Error,
+): Promise<EstadoAcaoNaLicenca> {
+  const recusa = await recusaNaLicenca(acao, recusas);
+  if (recusa) return recusa;
   const caminho = `/licencas/${encodeURIComponent(prefixo)}`;
   revalidatePath(caminho);
   revalidatePath("/licencas");
@@ -130,4 +140,30 @@ export async function reativarLicenca(_estado: EstadoAcaoNaLicenca, formulario: 
 export async function revogarLicenca(_estado: EstadoAcaoNaLicenca, formulario: FormData): Promise<EstadoAcaoNaLicenca> {
   if (formulario.get("confirmacao") !== "sim") return { erro: "Confirme que a Revogação é definitiva." };
   return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().revogarLicenca(prefixo));
+}
+
+/** Resultado da Troca de chave: a recusa, ou a Chave nova, que só existe nesta resposta. */
+export interface EstadoTrocaDeChave extends EstadoAcaoNaLicenca {
+  /** A Chave não vai para a URL nem fica guardada. */
+  trocada?: { chave: string; prefixo: string };
+}
+
+/**
+ * Troca de chave: só segue com a confirmação marcada. Ao contrário das outras ações,
+ * não revalida nem redireciona: o prefixo antigo deixou de existir, e recarregar o
+ * detalhe dele mostraria "não encontrada" no lugar da Chave nova. As páginas do
+ * painel são dinâmicas e já saem atualizadas na próxima visita.
+ */
+export async function trocarChave(_estado: EstadoTrocaDeChave, formulario: FormData): Promise<EstadoTrocaDeChave> {
+  if (formulario.get("confirmacao") !== "sim") return { erro: "Confirme que a Chave atual deixará de valer." };
+  const prefixo = String(formulario.get("prefixo") ?? "");
+  let trocada: EstadoTrocaDeChave["trocada"];
+  const recusa = await recusaNaLicenca(
+    async () => {
+      const { licenca, chave } = await nucleoDaInstancia().trocarChave(prefixo);
+      trocada = { chave, prefixo: licenca.prefixo };
+    },
+    (erro) => erro instanceof AcaoNaoPermitida,
+  );
+  return recusa ?? { trocada };
 }
