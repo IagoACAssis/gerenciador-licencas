@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useActionState } from "react";
-import { BotaoCopiar } from "../botao-copiar";
 import { emitirLicenca, type EstadoEmissao } from "./acoes";
+import { ChaveExibida } from "./chave-exibida";
 
 interface Opcao {
   valor: string;
@@ -19,20 +19,7 @@ export function FormularioEmissao({ produtos, clientes, inicial }: {
   });
 
   if (estado.emitida) {
-    return (
-      <section className="cartao">
-        <h2>Licença emitida</h2>
-        <p className="aviso" role="alert">
-          Copie a Chave de licença agora e entregue-a ao Cliente. <strong>Ela não poderá ser vista de novo</strong>,
-          nem por você: a Instância guarda só uma impressão dela.
-        </p>
-        <pre>{estado.emitida.chave}</pre>
-        <BotaoCopiar texto={estado.emitida.chave} rotulo="Copiar Chave de licença" />
-        <p>
-          <Link href={`/licencas/${estado.emitida.prefixo}`}>Ver a Licença {estado.emitida.prefixo}</Link>
-        </p>
-      </section>
-    );
+    return <ChaveExibida titulo="Licença emitida" chave={estado.emitida.chave} prefixo={estado.emitida.prefixo} />;
   }
 
   const { valores, erros } = estado;

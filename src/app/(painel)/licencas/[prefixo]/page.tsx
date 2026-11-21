@@ -14,6 +14,7 @@ import {
 } from "../acoes";
 import { Estado } from "../tabela";
 import { FormularioAcao } from "./formulario-acao";
+import { FormularioTrocaDeChave } from "./formulario-troca-de-chave";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ function descreverEvento(evento: EventoLicenca): string {
       return "Reativação.";
     case "revogacao":
       return "Revogação.";
+    case "troca_de_chave":
+      return `Troca de chave: a Chave que começava com ${evento.prefixoAnterior} deixou de valer.`;
     case "emissao": {
       const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
       return `Emissão: ${validade}, Limite de ativações ${descreverLimite(evento.limiteAtivacoes)}.`;
@@ -120,6 +123,7 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
               </label>
               <button type="submit">Revogar</button>
             </FormularioAcao>
+            <FormularioTrocaDeChave prefixo={licenca.prefixo} />
           </>
         )}
       </section>

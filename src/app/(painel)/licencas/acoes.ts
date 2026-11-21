@@ -131,3 +131,30 @@ export async function revogarLicenca(_estado: EstadoAcaoNaLicenca, formulario: F
   if (formulario.get("confirmacao") !== "sim") return { erro: "Confirme que a Revogação é definitiva." };
   return acaoDeCicloDeVida(formulario, (prefixo) => nucleoDaInstancia().revogarLicenca(prefixo));
 }
+
+/** Resultado da Troca de chave: a recusa, ou a Chave nova, que só existe nesta resposta. */
+export interface EstadoTrocaDeChave extends EstadoAcaoNaLicenca {
+  /** A Chave não vai para a URL nem fica guardada. */
+  trocada?: { chave: string; prefixo: string };
+}
+
+/**
+ * Troca de chave: só segue com a confirmação marcada. Ao contrário das outras ações,
+ * não revalida nem redireciona: o prefixo antigo deixou de existir, e recarregar o
+ * detalhe dele mostraria "não encontrada" no lugar da Chave nova. As páginas do
+ * painel são dinâmicas e já saem atualizadas na próxima visita.
+ */
+export async function trocarChave(_estado: EstadoTrocaDeChave, formulario: FormData): Promise<EstadoTrocaDeChave> {
+  // Server Actions podem ser chamadas diretamente; o layout não as protege.
+  if (!(await administradorAutenticado())) redirect("/entrar");
+  if (formulario.get("confirmacao") !== "sim") return { erro: "Confirme que a Chave atual deixará de valer." };
+  const prefixo = String(formulario.get("prefixo") ?? "");
+  try {
+    const { licenca, chave } = await nucleoDaInstancia().trocarChave(prefixo);
+    return { trocada: { chave, prefixo: licenca.prefixo } };
+  } catch (erro) {
+    if (erro instanceof LicencaNaoEncontrada) redirect("/licencas");
+    if (erro instanceof AcaoNaoPermitida) return { erro: erro.message };
+    throw erro;
+  }
+}
