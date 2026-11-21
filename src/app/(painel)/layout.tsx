@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { administradorAutenticado, sair } from "@/acesso/administrador";
 import { classeBotao } from "@/componentes/botoes";
 import { Marca } from "@/componentes/marca";
+import { PaletaDeComandos } from "@/componentes/paleta-de-comandos";
 import { SeletorDeTema } from "@/componentes/seletor-de-tema";
 import { Abas } from "./abas";
 
@@ -26,7 +27,7 @@ export default async function LayoutPainel({ children }: { children: ReactNode }
             <Marca />
           </Link>
           <div className="ml-auto flex items-center gap-2">
-            {/* Aqui entra o botão "Buscar ⌘K" da paleta de comandos (#20). */}
+            <PaletaDeComandos />
             <SeletorDeTema />
             <form action={sairDoPainel}>
               <button type="submit" className={classeBotao("fantasma")}>Sair</button>
