@@ -1,0 +1,129 @@
+{
+  "id": "4dfa774a-1dd0-4b45-b651-d8c4d7165692",
+  "prevId": "186a4997-d9c8-413f-8a37-183de4d9a3a8",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.produtos": {
+      "name": "produtos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "produtos_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "identificador": {
+          "name": "identificador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "janela_aviso_dias": {
+          "name": "janela_aviso_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "carencia_dias": {
+          "name": "carencia_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "limite_ativacoes_padrao": {
+          "name": "limite_ativacoes_padrao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cota_substituicoes_quantidade": {
+          "name": "cota_substituicoes_quantidade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cota_substituicoes_dias": {
+          "name": "cota_substituicoes_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tolerancia_offline_dias": {
+          "name": "tolerancia_offline_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave_publica": {
+          "name": "chave_publica",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave_privada_cifrada": {
+          "name": "chave_privada_cifrada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cadastrado_em": {
+          "name": "cadastrado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "produtos_identificador_unique": {
+          "name": "produtos_identificador_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "identificador"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

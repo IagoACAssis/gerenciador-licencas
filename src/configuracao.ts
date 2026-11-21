@@ -5,6 +5,7 @@ export interface Configuracao {
   adminSenhaHash: string;
   sessaoSegredo: string;
   sessaoHoras: number;
+  chavesSegredo: string;
 }
 
 function obrigatoria(nome: string): string {
@@ -18,6 +19,10 @@ export function lerConfiguracao(): Configuracao {
   if (sessaoSegredo.length < 32) {
     throw new Error("SESSAO_SEGREDO precisa ter no mínimo 32 caracteres.");
   }
+  const chavesSegredo = obrigatoria("CHAVES_SEGREDO");
+  if (chavesSegredo.length < 32) {
+    throw new Error("CHAVES_SEGREDO precisa ter no mínimo 32 caracteres.");
+  }
   const sessaoHoras = Number(process.env.SESSAO_HORAS ?? "8");
   if (!Number.isFinite(sessaoHoras) || sessaoHoras <= 0) {
     throw new Error("SESSAO_HORAS precisa ser um número de horas maior que zero.");
@@ -28,5 +33,6 @@ export function lerConfiguracao(): Configuracao {
     adminSenhaHash: obrigatoria("ADMIN_SENHA_HASH"),
     sessaoSegredo,
     sessaoHoras,
+    chavesSegredo,
   };
 }

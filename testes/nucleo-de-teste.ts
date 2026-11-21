@@ -3,6 +3,8 @@ import { conectarBanco } from "../src/banco/conexao.ts";
 import { criarNucleo, type Aleatoriedade, type Relogio } from "../src/nucleo/index.ts";
 import { urlBancoTeste } from "./url-banco-teste.ts";
 
+export const SEGREDO_CHAVES_TESTE = "segredo-das-chaves-de-teste-com-mais-de-32-caracteres";
+
 /** Relógio controlado pelo teste: começa num momento fixo e só anda quando mandado. */
 export function relogioDeTeste(inicio = new Date("2026-01-01T12:00:00Z")) {
   let atual = inicio;
@@ -43,6 +45,7 @@ export function nucleoDeTeste(inicio = new Date("2026-01-01T12:00:00Z")) {
     banco: conexao.banco,
     relogio: { agora: () => atual.tempo.relogio.agora() },
     aleatoriedade: { bytes: (quantidade) => atual.aleatoriedade.bytes(quantidade) },
+    segredoChaves: SEGREDO_CHAVES_TESTE,
   });
   return { nucleo, tempo: { avancar: (ms: number) => atual.tempo.avancar(ms) } };
 }

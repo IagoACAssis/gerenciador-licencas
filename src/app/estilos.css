@@ -6,3 +6,15 @@ label { display: grid; gap: 4px; font-size: 14px; }
 input { padding: 8px; font-size: 16px; border: 1px solid #bbb; border-radius: 4px; }
 button { padding: 8px 14px; font-size: 15px; cursor: pointer; }
 .erro { color: #b00020; font-size: 14px; margin: 0; }
+nav { display: flex; gap: 16px; align-items: center; }
+a { color: #1a4fa0; }
+.titulo { display: flex; justify-content: space-between; align-items: center; }
+.botao { padding: 8px 14px; background: #1a4fa0; color: #fff; border-radius: 4px; text-decoration: none; }
+.cartao { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+form.formulario { display: grid; gap: 12px; max-width: 560px; }
+fieldset { display: grid; gap: 12px; border: 1px solid #ddd; border-radius: 6px; }
+textarea { padding: 8px; font-size: 16px; border: 1px solid #bbb; border-radius: 4px; font-family: inherit; }
+small { color: #555; }
+table { width: 100%; border-collapse: collapse; background: #fff; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; }
+pre { background: #f0f0ee; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 13px; }

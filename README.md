@@ -23,6 +23,7 @@ Requisitos: Docker com Docker Compose. Para gerar o hash da senha, também Node 
    ADMIN_USUARIO=admin
    ADMIN_SENHA_HASH=<saída do pnpm hash-senha>
    SESSAO_SEGREDO=<gere com: openssl rand -base64 48>
+   CHAVES_SEGREDO=<gere com: openssl rand -base64 48>
    ```
 
 3. Suba a aplicação e o banco:
@@ -45,6 +46,7 @@ Para atualizar a Instância, baixe a versão nova e rode o mesmo comando de novo
 | `ADMIN_USUARIO` | sim | Usuário do Administrador. |
 | `ADMIN_SENHA_HASH` | sim | Hash scrypt da senha, gerado por `pnpm hash-senha`. |
 | `SESSAO_SEGREDO` | sim | Segredo, com no mínimo 32 caracteres, que assina o cookie de sessão. Se for trocado, todas as sessões abertas caem. |
+| `CHAVES_SEGREDO` | sim | Segredo, com no mínimo 32 caracteres, que cifra no banco as chaves privadas de assinatura dos Produtos. Guarde uma cópia junto com o backup do banco: **se ele for perdido ou trocado, as chaves privadas ficam ilegíveis** e os Produtos já entregues deixam de conseguir conferir as Respostas assinadas. É independente do `SESSAO_SEGREDO`, que pode ser trocado à vontade. |
 | `SESSAO_HORAS` | não (8) | Duração da sessão do Administrador. |
 | `APP_PORTA` | não (3000) | Porta da aplicação na máquina. |
 | `POSTGRES_PORTA` | não (5432) | Só em desenvolvimento: porta do Postgres na máquina, aberta só em `127.0.0.1`. |
@@ -61,7 +63,7 @@ docker compose up -d postgres   # com o override: Postgres exposto e com os banc
 export DATABASE_URL=postgres://licencas:<senha>@localhost:5432/licencas
 export DATABASE_URL_TESTE=postgres://licencas:<senha>@localhost:5432/licencas_teste
 pnpm db:migrar                  # aplica as migrações no banco de desenvolvimento
-pnpm dev                        # também precisa de ADMIN_USUARIO, ADMIN_SENHA_HASH e SESSAO_SEGREDO
+pnpm dev                        # também precisa de ADMIN_USUARIO, ADMIN_SENHA_HASH, SESSAO_SEGREDO e CHAVES_SEGREDO
 ```
 
 - `pnpm typecheck`: confere os tipos.
