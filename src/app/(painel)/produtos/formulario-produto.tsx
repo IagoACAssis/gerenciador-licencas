@@ -64,8 +64,10 @@ export function FormularioProduto({ acao, valoresIniciais, rotuloBotao, cancelar
         <CampoNumerico nome="limiteAtivacoesPadrao" rotulo="Limite de ativações padrão" estado={estado}
           ajuda="Quantas Ativações simultâneas uma Licença aceita, se ela não tiver limite próprio." />
         <div className="grid gap-5 sm:grid-cols-2">
-          <CampoNumerico nome="cotaSubstituicoesQuantidade" rotulo="Cota de substituições: quantidade" estado={estado} />
-          <CampoNumerico nome="cotaSubstituicoesDias" rotulo="Cota de substituições: nos últimos N dias" estado={estado} />
+          <CampoNumerico nome="cotaSubstituicoesQuantidade" rotulo="Cota de substituições: quantidade" estado={estado}
+            ajuda="Quantas Substituições de ativação uma Licença pode fazer sem você intervir." />
+          <CampoNumerico nome="cotaSubstituicoesDias" rotulo="Cota de substituições: nos últimos N dias" estado={estado}
+            ajuda="O período, em dias, em que essas Substituições são contadas." />
         </div>
         <CampoNumerico nome="toleranciaOfflineDias" rotulo="Tolerância offline (dias)" estado={estado}
           ajuda="Por quanto tempo uma Resposta assinada vale sem nova Validação." />

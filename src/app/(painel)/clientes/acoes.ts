@@ -28,5 +28,7 @@ export async function salvarCliente(_estado: EstadoFormularioCliente, formulario
     throw erro;
   }
   revalidatePath("/clientes");
-  redirect(comAviso("/clientes", id ? "cliente-salvo" : "cliente-cadastrado"));
+  if (id) revalidatePath(`/clientes/${id}`);
+  // A edição volta à página do Cliente, de onde ela foi aberta; o cadastro volta à lista.
+  redirect(id ? comAviso(`/clientes/${id}`, "cliente-salvo") : comAviso("/clientes", "cliente-cadastrado"));
 }
