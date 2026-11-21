@@ -5,7 +5,7 @@ import { emGrupos } from "@/nucleo/chave-licenca";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 
 export interface ItemDaPaleta {
-  grupo: string;
+  grupo: "Ação" | "Ir para" | "Licença" | "Cliente" | "Produto";
   rotulo: string;
   detalhe?: string;
   href: string;
@@ -29,7 +29,7 @@ export async function carregarItensDaPaleta(): Promise<ItemDaPaleta[]> {
     nucleo.listarProdutos(),
   ]);
   return [
-    ...licencas.map((l) => ({
+    ...licencas.map((l): ItemDaPaleta => ({
       grupo: "Licença",
       rotulo: `${l.cliente.nome} · ${l.produto.nome}`,
       detalhe: `${l.prefixo}…`,
@@ -37,7 +37,7 @@ export async function carregarItensDaPaleta(): Promise<ItemDaPaleta[]> {
       // O prefixo também é achado como aparece na Chave, com hífen: "ABCD-EF".
       termos: emGrupos(l.prefixo),
     })),
-    ...clientes.map((c) => ({ grupo: "Cliente", rotulo: c.nome, detalhe: c.email, href: `/clientes/${c.id}` })),
-    ...produtos.map((p) => ({ grupo: "Produto", rotulo: p.nome, detalhe: p.identificador, href: `/produtos/${p.identificador}` })),
+    ...clientes.map((c): ItemDaPaleta => ({ grupo: "Cliente", rotulo: c.nome, detalhe: c.email, href: `/clientes/${c.id}` })),
+    ...produtos.map((p): ItemDaPaleta => ({ grupo: "Produto", rotulo: p.nome, detalhe: p.identificador, href: `/produtos/${p.identificador}` })),
   ];
 }

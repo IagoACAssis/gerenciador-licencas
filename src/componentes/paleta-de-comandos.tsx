@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { AREAS_DO_PAINEL } from "./areas-do-painel";
 import { classeBotao } from "./botoes";
-import { carregarItensDaPaleta, type ItemDaPaleta } from "./paleta-de-comandos-itens";
+import { carregarItensDaPaleta, type ItemDaPaleta } from "./paleta-de-comandos-acoes";
 
 // Navegação e ações não dependem do banco: aparecem na hora, antes de os itens do servidor chegarem.
 const ITENS_FIXOS: ItemDaPaleta[] = [
@@ -11,7 +11,7 @@ const ITENS_FIXOS: ItemDaPaleta[] = [
   { grupo: "Ação", rotulo: "Cadastrar Cliente", href: "/clientes/novo" },
   { grupo: "Ação", rotulo: "Cadastrar Produto", href: "/produtos/novo" },
   { grupo: "Ação", rotulo: "Licenças a vencer", href: "/licencas?aVencer=1" },
-  ...AREAS_DO_PAINEL.map((area) => ({ grupo: "Ir para", rotulo: area.rotulo, href: area.href })),
+  ...AREAS_DO_PAINEL.map((area): ItemDaPaleta => ({ grupo: "Ir para", rotulo: area.rotulo, href: area.href })),
 ];
 
 // Acima disso, a lista só cresce sem ajudar: quem procura algo específico digita mais.
@@ -28,6 +28,15 @@ function noMac(): boolean {
 
 const nadaAcompanhar = () => () => {};
 
+function Lupa() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0 text-suave" aria-hidden="true">
+      <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /**
  * Paleta de comandos: o botão "Buscar" da barra do topo e o <dialog> que ele abre,
  * também por ⌘K ou Ctrl+K. Segue o padrão combobox com listbox: o foco fica no
@@ -38,6 +47,7 @@ export function PaletaDeComandos() {
   const dialogo = useRef<HTMLDialogElement>(null);
   const campo = useRef<HTMLInputElement>(null);
   const cliqueComecouFora = useRef(false);
+  const ultimaCarga = useRef(0);
   const idLista = useId();
   const [busca, setBusca] = useState("");
   const [ativo, setAtivo] = useState(0);
@@ -66,7 +76,12 @@ export function PaletaDeComandos() {
     setFalhou(false);
     elemento.showModal();
     campo.current?.focus();
-    carregarItensDaPaleta().then(setDoServidor, () => setFalhou(true));
+    // Só a carga da abertura mais recente vale: uma resposta atrasada de antes não a sobrescreve.
+    const carga = ++ultimaCarga.current;
+    carregarItensDaPaleta().then(
+      (recebidos) => carga === ultimaCarga.current && setDoServidor(recebidos),
+      () => carga === ultimaCarga.current && setFalhou(true),
+    );
   }
 
   function fechar() {
@@ -81,7 +96,8 @@ export function PaletaDeComandos() {
 
   useEffect(() => {
     const tecla = (evento: globalThis.KeyboardEvent) => {
-      if (!(evento.metaKey || evento.ctrlKey) || evento.altKey || evento.key.toLowerCase() !== "k") return;
+      // O autocompletar do navegador dispara keydown sem key.
+      if (!(evento.metaKey || evento.ctrlKey) || evento.altKey || evento.key?.toLowerCase() !== "k") return;
       evento.preventDefault();
       if (dialogo.current?.open) fechar();
       else abrir();
@@ -90,11 +106,6 @@ export function PaletaDeComandos() {
     return () => window.removeEventListener("keydown", tecla);
     // abrir e fechar só usam refs e setters, que não mudam entre renderizações.
   }, []);
-
-  // O item ativo fica sempre à vista, mesmo quando as setas passam da parte visível da lista.
-  useEffect(() => {
-    document.getElementById(`${idLista}-${ativo}`)?.scrollIntoView({ block: "nearest" });
-  }, [ativo, idLista]);
 
   function teclaNoCampo(evento: KeyboardEvent<HTMLInputElement>) {
     if (evento.nativeEvent.isComposing) return;
@@ -111,6 +122,11 @@ export function PaletaDeComandos() {
   }
 
   const indiceAtivo = Math.min(ativo, filtrados.length - 1);
+
+  // O item ativo fica sempre à vista, mesmo quando as setas passam da parte visível da lista.
+  useEffect(() => {
+    if (indiceAtivo >= 0) document.getElementById(`${idLista}-${indiceAtivo}`)?.scrollIntoView({ block: "nearest" });
+  }, [indiceAtivo, idLista]);
   const carregando = doServidor === null && !falhou;
   const situacao =
     filtrados.length > 0
@@ -128,10 +144,7 @@ export function PaletaDeComandos() {
         aria-keyshortcuts="Meta+K Control+K"
         className={classeBotao("secundario")}
       >
-        <svg viewBox="0 0 24 24" className="size-4 text-suave" aria-hidden="true">
-          <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          <path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
+        <Lupa />
         <span className="max-sm:sr-only">Buscar</span>
         <kbd aria-hidden="true" className="font-mono text-[11px] text-suave max-sm:hidden">
           {mac ? "⌘K" : "Ctrl K"}
@@ -151,10 +164,7 @@ export function PaletaDeComandos() {
         className="mx-auto mt-[12vh] mb-auto w-[min(92vw,36rem)] overflow-hidden rounded-2xl bg-superficie p-0 text-tinta shadow-2xl ring-1 ring-borda transition-[opacity,translate,scale,overlay,display] transition-discrete duration-200 ease-out not-open:translate-y-2 not-open:scale-98 not-open:opacity-0 starting:open:translate-y-2 starting:open:scale-98 starting:open:opacity-0 backdrop:bg-transparent backdrop:transition-[background-color,overlay,display] backdrop:transition-discrete backdrop:duration-200 open:backdrop:bg-[rgb(0_0_0/0.35)] starting:open:backdrop:bg-transparent"
       >
         <div className="flex items-center gap-3 border-b px-4">
-          <svg viewBox="0 0 24 24" className="size-4 shrink-0 text-suave" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
-            <path d="m16 16 4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
+          <Lupa />
           <input
             ref={campo}
             type="text"
@@ -204,7 +214,7 @@ export function PaletaDeComandos() {
           <p aria-hidden="true" className="px-3 py-8 text-center text-sm text-suave">{situacao}</p>
         )}
         {falhou && (
-          <p className="border-t px-4 py-2 text-xs text-perigo">Não foi possível carregar Licenças, Clientes e Produtos. Feche e abra de novo.</p>
+          <p className="border-t px-4 py-2 text-xs text-perigo">Não foi possível atualizar Licenças, Clientes e Produtos. Feche e abra de novo.</p>
         )}
         <p role="status" className="sr-only">{situacao}</p>
       </dialog>
