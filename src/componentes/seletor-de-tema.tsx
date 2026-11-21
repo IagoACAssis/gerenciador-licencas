@@ -60,12 +60,12 @@ export function SeletorDeTema() {
             type="radio"
             name="tema"
             value={opcao.valor}
+            aria-label={opcao.rotulo}
             checked={escolha === opcao.valor}
             onChange={() => escolherTema(opcao.valor)}
             className="sr-only"
           />
           <svg viewBox="0 0 24 24" className="size-4" aria-hidden="true">{opcao.icone}</svg>
-          <span className="sr-only">{opcao.rotulo}</span>
         </label>
       ))}
     </fieldset>

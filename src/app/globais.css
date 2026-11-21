@@ -4,9 +4,6 @@
 /* Telas ainda não migradas. Sai quando a última tela migrar. */
 @import "./legado.css" layer(legado);
 
-/* `dark:` segue o tema escolhido no painel, e não só o do sistema. */
-@custom-variant dark (&:where([data-tema="escuro"], [data-tema="escuro"] *));
-
 /* Só as cores do painel existem: nada de cinza ou azul do Tailwind que não troque com o tema. */
 @theme {
   --color-*: initial;

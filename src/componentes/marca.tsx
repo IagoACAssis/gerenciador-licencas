@@ -20,14 +20,14 @@ const TAMANHOS = {
 
 /** O símbolo num selo da cor de acento, com o nome e, se pedido, a descrição do produto. */
 export function Marca({ tamanho = "normal", descricao = false }: { tamanho?: keyof typeof TAMANHOS; descricao?: boolean }) {
-  const t = TAMANHOS[tamanho];
+  const medidas = TAMANHOS[tamanho];
   return (
     <span className="flex items-center gap-2.5">
-      <span className={`grid shrink-0 place-items-center bg-acento text-sobre-acento ${t.selo}`}>
-        <Simbolo className={t.simbolo} />
+      <span className={`grid shrink-0 place-items-center bg-acento text-sobre-acento ${medidas.selo}`}>
+        <Simbolo className={medidas.simbolo} />
       </span>
       <span className="leading-tight">
-        <span className={`block font-semibold tracking-tight ${t.nome}`}>Licença AI</span>
+        <span className={`block font-semibold tracking-tight ${medidas.nome}`}>Licença AI</span>
         {descricao && <span className="block text-sm text-suave">gerenciador de licenças auto-hospedado</span>}
       </span>
     </span>

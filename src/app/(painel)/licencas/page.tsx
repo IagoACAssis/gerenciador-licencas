@@ -13,8 +13,12 @@ function soAVencer(busca: Partial<Parametros>): boolean {
   return parametro(busca.aVencer) === "1";
 }
 
+function titulo(aVencer: boolean): string {
+  return aVencer ? "Licenças a vencer" : "Licenças";
+}
+
 export async function generateMetadata({ searchParams }: { searchParams: Promise<Partial<Parametros>> }): Promise<Metadata> {
-  return { title: soAVencer(await searchParams) ? "Licenças a vencer" : "Licenças" };
+  return { title: titulo(soAVencer(await searchParams)) };
 }
 
 export default async function Licencas({ searchParams }: { searchParams: Promise<Partial<Parametros>> }) {
@@ -45,7 +49,7 @@ export default async function Licencas({ searchParams }: { searchParams: Promise
   return (
     <div className="legado">
       <div className="titulo">
-        <h1>{aVencer ? "Licenças a vencer" : "Licenças"}</h1>
+        <h1>{titulo(aVencer)}</h1>
         <Link className="botao" href="/licencas/nova">Emitir Licença</Link>
       </div>
       <p>

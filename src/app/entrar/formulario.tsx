@@ -21,8 +21,8 @@ export function FormularioEntrada() {
       {estado.erro && (
         <p role="alert" className="rounded-lg bg-perigo-suave px-3 py-2 text-sm text-perigo">{estado.erro}</p>
       )}
-      <button type="submit" disabled={enviando} className={classeBotao("primario", "mt-1 py-2")}>
-        {enviando ? "Entrando…" : "Entrar"}
+      <button type="submit" disabled={enviando} className={classeBotao("primario", "mt-1")}>
+        Entrar
       </button>
     </form>
   );
