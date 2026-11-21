@@ -8,6 +8,13 @@ export async function entrarNoPainel(
 ): Promise<{ erro?: string }> {
   const usuario = String(dados.get("usuario") ?? "");
   const senha = String(dados.get("senha") ?? "");
-  if (!(await entrar(usuario, senha))) return { erro: "Usuário ou senha incorretos." };
+  const tentativa = await entrar(usuario, senha);
+  if (tentativa.resultado === "recusada") return { erro: "Usuário ou senha incorretos." };
+  if (tentativa.resultado === "limite") {
+    const minutos = Math.ceil(tentativa.esperaSegundos / 60);
+    return {
+      erro: `Muitas tentativas de entrada. Tente de novo em ${minutos} ${minutos === 1 ? "minuto" : "minutos"}.`,
+    };
+  }
   redirect("/");
 }
