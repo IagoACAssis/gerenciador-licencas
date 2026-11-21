@@ -323,6 +323,10 @@ describe("Licenças", () => {
         ...licenca,
         historico: [{ tipo: "emissao", ocorridoEm: INICIO, validaAte: daquiA(30), limiteAtivacoes: 2 }],
         ativacoes: [],
+        substituicoes: [],
+        substituicoesNoPeriodo: 0,
+        cotaSubstituicoes: { quantidade: 2, dias: 30 },
+        contagemSubstituicoesZeradaEm: null,
       });
     });
 

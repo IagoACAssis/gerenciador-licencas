@@ -23,8 +23,10 @@ export {
 } from "./clientes.ts";
 
 export {
+  AtivacaoNaoEncontrada,
   DadosDeLicencaInvalidos,
   ESTADOS_LICENCA,
+  LicencaNaoEncontrada,
   type CampoLicenca,
   type DadosEmissao,
   type Ativacao,
@@ -33,6 +35,7 @@ export {
   type EventoLicenca,
   type FiltroLicencas,
   type Licenca,
+  type SubstituicaoAtivacao,
 } from "./licencas.ts";
 
 export {

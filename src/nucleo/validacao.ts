@@ -1,6 +1,6 @@
 import { sign } from "node:crypto";
-import { and, count, eq } from "drizzle-orm";
-import { ativacoes, licencas, produtos } from "../banco/esquema.ts";
+import { and, asc, eq } from "drizzle-orm";
+import { ativacoes, licencas, produtos, substituicoesAtivacao } from "../banco/esquema.ts";
 import { emGrupos, hashDaChave } from "./chave-licenca.ts";
 import { decifrarChavePrivada } from "./chaves.ts";
 import {
@@ -10,8 +10,10 @@ import {
   type EstadoLicenca,
   type SituacaoLicenca,
 } from "./estado.ts";
+import type { Transacao } from "../banco/conexao.ts";
 import type { DependenciasNucleo } from "./index.ts";
 import { ProdutoNaoEncontrado } from "./produtos.ts";
+import { substituicoesNoPeriodo } from "./substituicoes.ts";
 
 /** O que o Produto envia na Validação. */
 export interface PedidoValidacao {
@@ -105,39 +107,53 @@ function motivoPeloEstado(situacao: SituacaoLicenca): MotivoRecusa | null {
   return null;
 }
 
-type Transacao = Parameters<Parameters<DependenciasNucleo["banco"]["transaction"]>[0]>[0];
-
 /**
  * Reaproveita a Ativação do Dispositivo ou cria uma, se houver vaga no Limite de
- * ativações. Chamada com a Licença travada, para que Validações simultâneas não
- * passem do limite. Devolve o motivo da recusa, ou null se aceitou.
+ * ativações. Sem vaga, faz a Substituição de ativação da Ativação com a última
+ * Validação mais antiga, se ainda houver Cota de substituições. Chamada com a
+ * Licença travada, para que Validações simultâneas não passem do limite nem da
+ * Cota. Devolve o motivo da recusa, ou null se aceitou.
  */
 async function ativar(
   tx: Transacao,
-  licencaId: number,
-  limite: number,
+  licenca: typeof licencas.$inferSelect,
+  produto: typeof produtos.$inferSelect,
   pedido: { dispositivo: string; nomeDispositivo: string | null },
   agora: Date,
 ): Promise<MotivoRecusa | null> {
-  const doDispositivo = and(eq(ativacoes.licencaId, licencaId), eq(ativacoes.dispositivo, pedido.dispositivo));
+  const daLicenca = eq(ativacoes.licencaId, licenca.id);
   const atualizadas = await tx
     .update(ativacoes)
     .set({
       ultimaValidacaoEm: agora,
       ...(pedido.nomeDispositivo ? { nomeDispositivo: pedido.nomeDispositivo } : {}),
     })
-    .where(doDispositivo)
+    .where(and(daLicenca, eq(ativacoes.dispositivo, pedido.dispositivo)))
     .returning({ id: ativacoes.id });
   if (atualizadas.length > 0) return null;
 
-  const [{ total } = { total: 0 }] = await tx
-    .select({ total: count() })
+  const existentes = await tx
+    .select({ id: ativacoes.id, dispositivo: ativacoes.dispositivo })
     .from(ativacoes)
-    .where(eq(ativacoes.licencaId, licencaId));
-  if (total >= limite) return "limite_de_ativacoes_atingido";
+    .where(daLicenca)
+    .orderBy(asc(ativacoes.ultimaValidacaoEm), asc(ativacoes.id));
+  // Com o limite reduzido abaixo do uso, não há vaga, mas a Substituição de ativação continua possível.
+  if (existentes.length >= limiteDeAtivacoes(licenca, produto)) {
+    const [substituida] = existentes;
+    const cotaEsgotada =
+      (await substituicoesNoPeriodo(tx, licenca, produto, agora)) >= produto.cotaSubstituicoesQuantidade;
+    if (!substituida || cotaEsgotada) return "limite_de_ativacoes_atingido";
+    await tx.delete(ativacoes).where(eq(ativacoes.id, substituida.id));
+    await tx.insert(substituicoesAtivacao).values({
+      licencaId: licenca.id,
+      dispositivoRemovido: substituida.dispositivo,
+      dispositivoNovo: pedido.dispositivo,
+      feitaEm: agora,
+    });
+  }
 
   await tx.insert(ativacoes).values({
-    licencaId,
+    licencaId: licenca.id,
     dispositivo: pedido.dispositivo,
     nomeDispositivo: pedido.nomeDispositivo,
     ativadaEm: agora,
@@ -186,7 +202,7 @@ export function casosDeUsoDeValidacao({ banco, relogio, segredoChaves }: Depende
         const situacao = calcularSituacao(licenca, produto, agora);
         const recusa =
           motivoPeloEstado(situacao) ??
-          (await ativar(tx, licenca.id, limiteDeAtivacoes(licenca, produto), pedido, agora));
+          (await ativar(tx, licenca, produto, pedido, agora));
 
         const carga: CargaValidacao = {
           produto: produto.identificador,
