@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { emitirLicenca, type EstadoEmissao } from "./acoes";
-import { ChaveExibida } from "./chave-exibida";
+import { classeBotao } from "@/componentes/botoes";
+import { DestaqueDaChaveNova } from "@/componentes/chave-nova";
 
 interface Opcao {
   valor: string;
@@ -19,7 +20,13 @@ export function FormularioEmissao({ produtos, clientes, inicial }: {
   });
 
   if (estado.emitida) {
-    return <ChaveExibida titulo="Licença emitida" chave={estado.emitida.chave} prefixo={estado.emitida.prefixo} />;
+    return (
+      <DestaqueDaChaveNova titulo="Licença emitida" chave={estado.emitida.chave}>
+        <Link href={`/licencas/${estado.emitida.prefixo}`} className={classeBotao("secundario")}>
+          Ver a Licença {estado.emitida.prefixo}…
+        </Link>
+      </DestaqueDaChaveNova>
+    );
   }
 
   const { valores, erros } = estado;

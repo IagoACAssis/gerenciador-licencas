@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { administradorAutenticado, sair } from "@/acesso/administrador";
+import { ProvedorDeAvisos } from "@/componentes/aviso-temporario";
 import { classeBotao } from "@/componentes/botoes";
 import { Marca } from "@/componentes/marca";
 import { SeletorDeTema } from "@/componentes/seletor-de-tema";
 import { Abas } from "./abas";
+import { AVISOS_NA_URL } from "./avisos";
 
 async function sairDoPainel() {
   "use server";
@@ -37,7 +39,9 @@ export default async function LayoutPainel({ children }: { children: ReactNode }
           <Abas />
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-10">
+        <ProvedorDeAvisos avisosNaUrl={AVISOS_NA_URL}>{children}</ProvedorDeAvisos>
+      </main>
     </>
   );
 }

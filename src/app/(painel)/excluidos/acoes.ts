@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { administradorAutenticado } from "@/acesso/administrador";
 import { ClienteNaoEncontrado, ExclusaoNaoPermitida, LicencaNaoEncontrada, ProdutoNaoEncontrado } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+import { comAviso } from "../avisos";
 import type { EstadoRecusavel } from "../formulario-recusavel";
 
 /**
@@ -37,7 +38,10 @@ export async function excluirCliente(_estado: EstadoRecusavel, formulario: FormD
 }
 
 export async function excluirLicenca(_estado: EstadoRecusavel, formulario: FormData): Promise<EstadoRecusavel> {
-  return executar(() => nucleoDaInstancia().excluirLicenca(texto(formulario, "prefixo")), "/licencas");
+  return executar(
+    () => nucleoDaInstancia().excluirLicenca(texto(formulario, "prefixo")),
+    comAviso("/licencas", "licenca-excluida"),
+  );
 }
 
 export async function restaurarProduto(_estado: EstadoRecusavel, formulario: FormData): Promise<EstadoRecusavel> {

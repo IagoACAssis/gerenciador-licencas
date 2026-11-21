@@ -62,23 +62,9 @@
   }
   .acoes { display: flex; gap: 16px; align-items: center; }
   form.filtros { flex-wrap: wrap; }
-  .aviso {
-    background: var(--alerta-suave); color: var(--tinta); border: 1px solid var(--alerta);
-    border-radius: 4px; padding: 10px 12px;
-  }
-  .estado { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 13px; background: var(--elevada); }
-  .estado-ativa { background: var(--ok-suave); color: var(--ok); }
-  .estado-expirada { background: var(--perigo-suave); color: var(--perigo); }
-  .estado-suspensa { background: var(--alerta-suave); color: var(--alerta); }
-  .estado-revogada { background: var(--elevada); color: var(--suave); }
-  .indicacao {
-    display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 10px; font-size: 13px;
-    border: 1px solid var(--borda);
-  }
   dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margin: 0; }
   dt { font-weight: 600; }
   dd { margin: 0; }
-  ol.historico { list-style: decimal; padding-left: 20px; }
   form.acao { margin-bottom: 12px; }
   form.acao fieldset { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; border: 0; padding: 0; margin: 0; }
   form.acao small { flex-basis: 100%; }

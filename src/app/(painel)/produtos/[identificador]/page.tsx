@@ -4,7 +4,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { editarProduto } from "../acoes";
-import { BotaoCopiar } from "../../botao-copiar";
+import { BotaoCopiar } from "@/componentes/botao-copiar";
 import { FormularioProduto } from "../formulario-produto";
 import { excluirProduto } from "../../excluidos/acoes";
 import { FormularioExclusao } from "../../excluidos/formulario-exclusao";

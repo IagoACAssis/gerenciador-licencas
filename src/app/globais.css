@@ -72,6 +72,42 @@
   ::selection { background: var(--acento-suave); color: var(--tinta); }
 }
 
+@layer components {
+  /* Diálogo nativo: entrada e saída curtas, com @starting-style e allow-discrete. */
+  dialog {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+    transition:
+      opacity 200ms,
+      transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  dialog[open] { opacity: 1; transform: none; }
+  @starting-style {
+    dialog[open] { opacity: 0; transform: translateY(8px) scale(0.98); }
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0);
+    transition:
+      background 200ms,
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  dialog[open]::backdrop { background: rgb(0 0 0 / 0.4); }
+  @starting-style {
+    dialog[open]::backdrop { background: rgb(0 0 0 / 0); }
+  }
+
+  /* Aviso temporário: sobe, fica e desce. A duração vem do componente (aviso-temporario.tsx). */
+  @keyframes aviso-temporario {
+    from { opacity: 0; transform: translateY(12px); }
+    8%, 92% { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateY(12px); }
+  }
+  .aviso-temporario { animation: aviso-temporario 4000ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+}
+
 /* Movimento: tudo desligado quando o sistema pede movimento reduzido. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after, ::backdrop {

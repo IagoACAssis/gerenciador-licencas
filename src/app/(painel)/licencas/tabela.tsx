@@ -1,17 +1,7 @@
 import Link from "next/link";
 import type { Licenca } from "@/nucleo";
+import { SeloDeEstado } from "@/componentes/selo-de-estado";
 import { formatarData } from "../formatacao";
-
-/** Estado com as indicações "a vencer" e "em Carência", quando houver. */
-export function Estado({ licenca }: { licenca: Licenca }) {
-  return (
-    <>
-      <span className={`estado estado-${licenca.estado.toLowerCase()}`}>{licenca.estado}</span>
-      {licenca.aVencer && <span className="indicacao">a vencer</span>}
-      {licenca.emCarencia && <span className="indicacao">em Carência</span>}
-    </>
-  );
-}
 
 export function TabelaLicencas({ licencas, semCliente = false }: { licencas: Licenca[]; semCliente?: boolean }) {
   return (
@@ -32,7 +22,7 @@ export function TabelaLicencas({ licencas, semCliente = false }: { licencas: Lic
             <td>{licenca.produto.nome}</td>
             {!semCliente && <td><Link href={`/clientes/${licenca.cliente.id}`}>{licenca.cliente.nome}</Link></td>}
             <td>{licenca.validaAte ? formatarData(licenca.validaAte) : "Perpétua"}</td>
-            <td><Estado licenca={licenca} /></td>
+            <td><SeloDeEstado licenca={licenca} /></td>
           </tr>
         ))}
       </tbody>
