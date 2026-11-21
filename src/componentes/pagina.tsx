@@ -22,3 +22,29 @@ export function CabecalhoDaPagina({ titulo, descricao, acoes }: { titulo: string
     </div>
   );
 }
+
+export interface Fato {
+  rotulo: string;
+  valor: ReactNode;
+  detalhe?: ReactNode;
+}
+
+/**
+ * A faixa de fatos de uma página de detalhe (Licença, Produto, Cliente): o essencial em
+ * células lado a lado, uma embaixo da outra no celular. `colunas` diz quantas por linha a
+ * partir do celular (por exemplo, "sm:grid-cols-2 lg:grid-cols-4"); escolha uma divisão
+ * que feche as linhas, porque o fio entre as células é o fundo da faixa aparecendo.
+ */
+export function FaixaDeFatos({ fatos, colunas }: { fatos: Fato[]; colunas: string }) {
+  return (
+    <dl className={`grid animate-entrar gap-px overflow-hidden rounded-xl border bg-borda [animation-delay:60ms] ${colunas}`}>
+      {fatos.map((fato) => (
+        <div key={fato.rotulo} className="min-w-0 bg-superficie p-5">
+          <dt className="text-xs text-suave">{fato.rotulo}</dt>
+          <dd className="mt-1 truncate text-lg font-medium">{fato.valor}</dd>
+          {fato.detalhe && <dd className="truncate text-xs text-suave">{fato.detalhe}</dd>}
+        </div>
+      ))}
+    </dl>
+  );
+}

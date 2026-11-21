@@ -30,11 +30,17 @@ async function executar(acao: () => Promise<void>, destino: string): Promise<Est
 const texto = (formulario: FormData, campo: string) => String(formulario.get(campo) ?? "");
 
 export async function excluirProduto(_estado: EstadoRecusavel, formulario: FormData): Promise<EstadoRecusavel> {
-  return executar(() => nucleoDaInstancia().excluirProduto(texto(formulario, "identificador")), "/produtos");
+  return executar(
+    () => nucleoDaInstancia().excluirProduto(texto(formulario, "identificador")),
+    comAviso("/produtos", "produto-excluido"),
+  );
 }
 
 export async function excluirCliente(_estado: EstadoRecusavel, formulario: FormData): Promise<EstadoRecusavel> {
-  return executar(() => nucleoDaInstancia().excluirCliente(Number(texto(formulario, "id"))), "/clientes");
+  return executar(
+    () => nucleoDaInstancia().excluirCliente(Number(texto(formulario, "id"))),
+    comAviso("/clientes", "cliente-excluido"),
+  );
 }
 
 export async function excluirLicenca(_estado: EstadoRecusavel, formulario: FormData): Promise<EstadoRecusavel> {

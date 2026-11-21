@@ -22,6 +22,11 @@ export function fimDoDia(texto: string): Date {
   return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? new Date(`${texto}T23:59:59.999Z`) : new Date(Number.NaN);
 }
 
+/** Quantidade com o nome no singular ou no plural: "1 dia", "15 dias", "0 Licenças". */
+export function contar(quantidade: number, singular: string, plural: string): string {
+  return `${quantidade} ${quantidade === 1 ? singular : plural}`;
+}
+
 /** Primeiro valor de um parâmetro da URL, que pode vir repetido. */
 export function parametro(valor: string | string[] | undefined): string {
   return (Array.isArray(valor) ? valor[0] : valor) ?? "";

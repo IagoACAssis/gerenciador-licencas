@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cache, type ReactNode } from "react";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { DetalheLicenca } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
@@ -8,7 +8,7 @@ import { Abas } from "@/componentes/abas";
 import { BotaoCopiar } from "@/componentes/botao-copiar";
 import { CLASSE_AJUDA, CLASSE_CAMPO, CLASSE_ROTULO } from "@/componentes/campos";
 import { DialogoDeConfirmacao } from "@/componentes/dialogo-de-confirmacao";
-import { LinkDeVolta } from "@/componentes/pagina";
+import { FaixaDeFatos, LinkDeVolta, type Fato } from "@/componentes/pagina";
 import { SeloDeEstado } from "@/componentes/selo-de-estado";
 import { descreverPrazo, formatarData, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
 import {
@@ -66,7 +66,7 @@ export default async function DetalheDaLicenca({ params }: { params: Promise<{ p
           )}
         </div>
 
-        <FaixaDeFatos licenca={licenca} agora={agora} />
+        <FatosDaLicenca licenca={licenca} agora={agora} />
 
         <div className="animate-entrar [animation-delay:120ms]">
           <Abas
@@ -194,8 +194,8 @@ function AcoesDeCicloDeVida({ licenca }: { licenca: DetalheLicenca }) {
   );
 }
 
-function FaixaDeFatos({ licenca, agora }: { licenca: DetalheLicenca; agora: Date }) {
-  const fatos: { rotulo: string; valor: ReactNode; detalhe: ReactNode }[] = [
+function FatosDaLicenca({ licenca, agora }: { licenca: DetalheLicenca; agora: Date }) {
+  const fatos: Fato[] = [
     {
       rotulo: "Cliente",
       valor: <Link href={`/clientes/${licenca.cliente.id}`} className="hover:text-acento">{licenca.cliente.nome}</Link>,
@@ -219,19 +219,7 @@ function FaixaDeFatos({ licenca, agora }: { licenca: DetalheLicenca; agora: Date
       detalhe: licenca.limiteProprio === null ? "limite padrão do Produto" : "limite próprio",
     },
   ];
-  // Uma coluna no celular, duas no meio, quatro no largo: as bordas separam as células em cada caso.
-  const bordas = ["", "border-t sm:border-t-0 sm:border-l", "border-t lg:border-t-0 lg:border-l", "border-t sm:border-l lg:border-t-0"];
-  return (
-    <dl className="grid animate-entrar overflow-hidden rounded-xl border bg-superficie [animation-delay:60ms] sm:grid-cols-2 lg:grid-cols-4">
-      {fatos.map((fato, i) => (
-        <div key={fato.rotulo} className={`min-w-0 p-5 ${bordas[i]}`}>
-          <dt className="text-xs text-suave">{fato.rotulo}</dt>
-          <dd className="mt-1 truncate text-lg font-medium">{fato.valor}</dd>
-          <dd className="truncate text-xs text-suave">{fato.detalhe}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+  return <FaixaDeFatos fatos={fatos} colunas="sm:grid-cols-2 lg:grid-cols-4" />;
 }
 
 function Quando({ data, agora }: { data: Date; agora: Date }) {

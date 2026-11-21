@@ -4,6 +4,11 @@
  */
 export const AVISOS_NA_URL = {
   "licenca-excluida": "Licença excluída. Dá para restaurar em Excluídos.",
+  "produto-cadastrado": "Produto cadastrado.",
+  "produto-excluido": "Produto excluído. Dá para restaurar em Excluídos.",
+  "cliente-cadastrado": "Cliente cadastrado.",
+  "cliente-salvo": "Cliente salvo.",
+  "cliente-excluido": "Cliente excluído. Dá para restaurar em Excluídos.",
 } satisfies Record<string, string>;
 
 /** O destino de um redirecionamento, com o aviso que a página de chegada mostra. */

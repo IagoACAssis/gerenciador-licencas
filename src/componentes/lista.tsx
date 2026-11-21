@@ -79,11 +79,16 @@ export function EstadoVazio({ titulo, children, acao }: { titulo: string; childr
  * Filtros de uma lista: um formulário GET que põe os filtros na URL, como hoje. Os
  * controles vêm em `children`, com CLASSE_CAMPO; cada um precisa de rótulo (aria-label).
  */
-export function BarraDeFiltros({ rotulo, children }: { rotulo: string; children: ReactNode }) {
+export function BarraDeFiltros({ rotulo, botao = "Filtrar", children }: {
+  rotulo: string;
+  /** Texto do botão que envia: "Filtrar", ou "Buscar" numa busca. */
+  botao?: string;
+  children: ReactNode;
+}) {
   return (
     <form role="search" aria-label={rotulo} className="flex animate-entrar flex-wrap items-center gap-2 [animation-delay:30ms]">
       {children}
-      <button type="submit" className={classeBotao("secundario", "py-2")}>Filtrar</button>
+      <button type="submit" className={classeBotao("secundario", "py-2")}>{botao}</button>
     </form>
   );
 }
