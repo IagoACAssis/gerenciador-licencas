@@ -1,6 +1,7 @@
-// Estado da Licença: sempre calculado, nunca gravado. Depende da data de
-// validade, da suspensão e da Revogação, das regras atuais do Produto e do
-// momento atual.
+// Regras de cálculo da Licença: estado e indicações, fim da Carência, fim da
+// Tolerância offline e Limite de ativações que vale. Tudo calculado, nunca
+// gravado, a partir dos dados da Licença, das regras atuais do Produto e do
+// momento atual. Os casos de uso chamam estas funções em vez de refazer a conta.
 
 export const ESTADOS_LICENCA = ["Ativa", "Expirada", "Suspensa", "Revogada"] as const;
 export type EstadoLicenca = (typeof ESTADOS_LICENCA)[number];
@@ -39,6 +40,17 @@ export function calcularSituacao(
 /** Último instante em que a Licença ainda é aceita: data de validade + Carência. */
 export function fimDaCarencia(validaAte: Date, regras: { carenciaDias: number }): Date {
   return new Date(validaAte.getTime() + regras.carenciaDias * UM_DIA_MS);
+}
+
+/** Até quando uma Resposta assinada aceita vale offline: o menor entre a Tolerância offline e o fim da Carência. */
+export function fimDaToleranciaOffline(
+  licenca: { validaAte: Date | null },
+  regras: { toleranciaOfflineDias: number; carenciaDias: number },
+  agora: Date,
+): Date {
+  const tolerancia = agora.getTime() + regras.toleranciaOfflineDias * UM_DIA_MS;
+  if (!licenca.validaAte) return new Date(tolerancia);
+  return new Date(Math.min(tolerancia, fimDaCarencia(licenca.validaAte, regras).getTime()));
 }
 
 /** Limite de ativações que vale agora: o próprio da Licença ou o padrão atual do Produto. */

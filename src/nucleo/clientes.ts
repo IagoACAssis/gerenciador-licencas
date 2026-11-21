@@ -1,5 +1,6 @@
 import { asc, eq, ilike, or } from "drizzle-orm";
 import { clientes } from "../banco/esquema.ts";
+import { idValido, violouUnicidade } from "../banco/postgres.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
 export interface Cliente {
@@ -38,8 +39,6 @@ const TAMANHO_MAXIMO_NOME = 200;
 const TAMANHO_MAXIMO_EMAIL = 254;
 // Só confere o formato geral (algo@dominio.tld); quem garante que o e-mail existe é o Administrador.
 const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// Faixa do `integer` do Postgres, onde ficam os ids.
-const MAIOR_ID = 2_147_483_647;
 
 function validar(dados: DadosDoCliente): DadosDoCliente {
   const nome = dados.nome.trim();
@@ -56,15 +55,9 @@ function validar(dados: DadosDoCliente): DadosDoCliente {
   return { nome, email };
 }
 
-function idValido(id: number): boolean {
-  return Number.isInteger(id) && id >= 1 && id <= MAIOR_ID;
-}
-
 /** Troca a violação do índice único de e-mail pela recusa com mensagem clara. */
 function traduzirEmailRepetido(erro: unknown): never {
-  const causa = erro instanceof Error && erro.cause ? erro.cause : erro;
-  const { code, constraint_name } = (causa ?? {}) as { code?: string; constraint_name?: string };
-  if (code === "23505" && constraint_name === "clientes_email_unico") {
+  if (violouUnicidade(erro, "clientes_email_unico")) {
     throw new DadosDeClienteInvalidos({ email: EMAIL_JA_USADO });
   }
   throw erro;

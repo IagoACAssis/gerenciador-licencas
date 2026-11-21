@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, like, type SQL } from "drizzle-orm";
 import { ativacoes, clientes, eventosLicenca, licencas, produtos } from "../banco/esquema.ts";
+import { idValido, MAIOR_INTEIRO, violouUnicidade } from "../banco/postgres.ts";
 import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, normalizarChave } from "./chave-licenca.ts";
 import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
 import type { DependenciasNucleo } from "./index.ts";
@@ -77,8 +78,6 @@ export class DadosDeLicencaInvalidos extends Error {
   }
 }
 
-// Faixa do `integer` do Postgres.
-const MAIOR_INTEIRO = 2_147_483_647;
 // Colisão de prefixo (40 bits) é rara; se acontecer, basta gerar outra Chave.
 const TENTATIVAS_DE_CHAVE = 5;
 
@@ -126,12 +125,6 @@ function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): 
   };
 }
 
-function violouUnicidade(erro: unknown, restricoes: string[]): boolean {
-  const causa = erro instanceof Error && erro.cause ? erro.cause : erro;
-  const { code, constraint_name } = (causa ?? {}) as { code?: string; constraint_name?: string };
-  return code === "23505" && !!constraint_name && restricoes.includes(constraint_name);
-}
-
 export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: DependenciasNucleo) {
   function consulta() {
     return banco
@@ -151,7 +144,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
 
     const idCliente = dados.cliente;
     const [cliente] =
-      Number.isInteger(idCliente) && idCliente >= 1 && idCliente <= MAIOR_INTEIRO
+      idValido(idCliente)
         ? await banco.select({ id: clientes.id }).from(clientes).where(eq(clientes.id, idCliente))
         : [];
     if (!cliente) erros.cliente = "Escolha um Cliente cadastrado.";
@@ -201,7 +194,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
           });
           return { licenca: await obterPorId(id, agora), chave };
         } catch (erro) {
-          const repetida = violouUnicidade(erro, ["licencas_prefixo_chave_unico", "licencas_hash_chave_unico"]);
+          const repetida = violouUnicidade(erro, "licencas_prefixo_chave_unico", "licencas_hash_chave_unico");
           if (!repetida || tentativa >= TENTATIVAS_DE_CHAVE) throw erro;
         }
       }

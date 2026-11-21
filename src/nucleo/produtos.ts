@@ -1,5 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { licencas, produtos } from "../banco/esquema.ts";
+import { MAIOR_INTEIRO } from "../banco/postgres.ts";
 import { cifrarChavePrivada, gerarParDeChaves } from "./chaves.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
@@ -78,8 +79,7 @@ function validar(dados: DadosProduto) {
     "toleranciaOfflineDias",
   ] as const) {
     const valor = valores[campo];
-    // Teto do integer do Postgres, para um número enorme virar mensagem e não erro do banco.
-    if (!Number.isInteger(valor) || valor < 0 || valor > 2_147_483_647) erros[campo] = MENSAGEM_NAO_NEGATIVO;
+    if (!Number.isInteger(valor) || valor < 0 || valor > MAIOR_INTEIRO) erros[campo] = MENSAGEM_NAO_NEGATIVO;
   }
   if (Object.keys(erros).length > 0) throw new DadosDeProdutoInvalidos(erros);
   return valores;

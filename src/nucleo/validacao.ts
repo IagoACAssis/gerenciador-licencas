@@ -5,7 +5,7 @@ import { emGrupos, hashDaChave } from "./chave-licenca.ts";
 import { decifrarChavePrivada } from "./chaves.ts";
 import {
   calcularSituacao,
-  fimDaCarencia,
+  fimDaToleranciaOffline,
   limiteDeAtivacoes,
   type EstadoLicenca,
   type SituacaoLicenca,
@@ -71,7 +71,6 @@ export class DadosDeValidacaoInvalidos extends Error {
   }
 }
 
-const UM_DIA_MS = 24 * 60 * 60 * 1000;
 const MAXIMO_IDENTIFICADOR = 100;
 const MAXIMO_TEXTO = 200;
 
@@ -189,10 +188,6 @@ export function casosDeUsoDeValidacao({ banco, relogio, segredoChaves }: Depende
           motivoPeloEstado(situacao) ??
           (await ativar(tx, licenca.id, limiteDeAtivacoes(licenca, produto), pedido, agora));
 
-        const limiteOffline = agora.getTime() + produto.toleranciaOfflineDias * UM_DIA_MS;
-        const limiteDaValidade = licenca.validaAte
-          ? fimDaCarencia(licenca.validaAte, produto).getTime()
-          : Number.POSITIVE_INFINITY;
         const carga: CargaValidacao = {
           produto: produto.identificador,
           licenca: emGrupos(licenca.prefixoChave),
@@ -205,7 +200,7 @@ export function casosDeUsoDeValidacao({ banco, relogio, segredoChaves }: Depende
           dataDeValidade: licenca.validaAte?.toISOString() ?? null,
           emitidaEm: agora.toISOString(),
           // Recusas não têm Tolerância offline.
-          validaAte: recusa ? agora.toISOString() : new Date(Math.min(limiteOffline, limiteDaValidade)).toISOString(),
+          validaAte: (recusa ? agora : fimDaToleranciaOffline(licenca, produto, agora)).toISOString(),
           nonce: pedido.nonce,
         };
         return carga;
