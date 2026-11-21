@@ -1,7 +1,8 @@
-import { asc, eq, sql } from "drizzle-orm";
-import { licencas, produtos } from "../banco/esquema.ts";
+import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { clientes, licencas, produtos } from "../banco/esquema.ts";
 import { MAIOR_INTEIRO } from "../banco/postgres.ts";
 import { cifrarChavePrivada, gerarParDeChaves } from "./chaves.ts";
+import { licencaEmUso, recusarSeHaLicencaEmVigor } from "./exclusao.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
 export interface RegrasProduto {
@@ -28,6 +29,7 @@ export interface Produto {
   /** Chave pública Ed25519 em PEM, para embutir no Produto. */
   chavePublica: string;
   cadastradoEm: Date;
+  /** Licenças em uso do Produto: sem as excluídas e as de Cliente excluído. */
   licencas: number;
 }
 
@@ -101,12 +103,9 @@ const colunasPublicas = {
 
 type LinhaPublica = { [K in keyof typeof colunasPublicas]: (typeof colunasPublicas)[K]["_"]["data"] };
 
-const colunasComContagem = {
-  ...colunasPublicas,
-  // Colunas qualificadas à mão: num select de uma tabela só, o Drizzle omite o nome
-  // da tabela, e "id" passaria a ser o da Licença dentro da subconsulta.
-  licencas: sql<number>`(SELECT count(*) FROM ${licencas} WHERE "licencas"."produto_id" = "produtos"."id")`.mapWith(Number),
-};
+const colunasComId = { id: produtos.id, ...colunasPublicas };
+
+const naoExcluido = isNull(produtos.excluidoEm);
 
 function paraProduto(linha: LinhaPublica & { licencas: number }): Produto {
   return {
@@ -127,6 +126,20 @@ function paraProduto(linha: LinhaPublica & { licencas: number }): Produto {
 }
 
 export function casosDeUsoDeProdutos({ banco, relogio, aleatoriedade, segredoChaves }: DependenciasNucleo) {
+  /** Junta a cada Produto a contagem das Licenças em uso dele. */
+  async function comContagem(linhas: (LinhaPublica & { id: number })[]): Promise<Produto[]> {
+    if (linhas.length === 0) return [];
+    const contagens = await banco
+      .select({ produtoId: licencas.produtoId, total: count() })
+      .from(licencas)
+      .innerJoin(produtos, eq(licencas.produtoId, produtos.id))
+      .innerJoin(clientes, eq(licencas.clienteId, clientes.id))
+      .where(and(licencaEmUso, inArray(licencas.produtoId, linhas.map((linha) => linha.id))))
+      .groupBy(licencas.produtoId);
+    const porProduto = new Map(contagens.map((c) => [c.produtoId, c.total]));
+    return linhas.map(({ id, ...linha }) => paraProduto({ ...linha, licencas: porProduto.get(id) ?? 0 }));
+  }
+
   return {
     /** Cadastra o Produto e gera o par de chaves Ed25519 e o identificador público dele. */
     async cadastrarProduto(dados: DadosProduto): Promise<Produto> {
@@ -145,32 +158,73 @@ export function casosDeUsoDeProdutos({ banco, relogio, aleatoriedade, segredoCha
       return paraProduto({ ...linha!, licencas: 0 });
     },
 
-    /** Altera nome, descrição e regras. O identificador e as chaves não mudam. */
+    /** Altera nome, descrição e regras. O identificador e as chaves não mudam. Produto excluído não é editado. */
     async editarProduto(identificador: string, dados: DadosProduto): Promise<Produto> {
       const valores = validar(dados);
       const [linha] = await banco
         .update(produtos)
         .set(valores)
-        .where(eq(produtos.identificador, identificador))
-        .returning(colunasComContagem);
+        .where(and(eq(produtos.identificador, identificador), naoExcluido))
+        .returning(colunasComId);
       if (!linha) throw new ProdutoNaoEncontrado();
-      return paraProduto(linha);
+      const [produto] = await comContagem([linha]);
+      return produto!;
     },
 
+    /** Os Produtos não excluídos, em ordem de nome. */
     async listarProdutos(): Promise<Produto[]> {
       const linhas = await banco
-        .select(colunasComContagem)
+        .select(colunasComId)
         .from(produtos)
+        .where(naoExcluido)
         .orderBy(asc(sql`lower(${produtos.nome})`), asc(produtos.id));
-      return linhas.map(paraProduto);
+      return comContagem(linhas);
     },
 
+    /** O Produto do identificador; null se não existir ou estiver excluído. */
     async obterProduto(identificador: string): Promise<Produto | null> {
-      const [linha] = await banco
-        .select(colunasComContagem)
+      const linhas = await banco
+        .select(colunasComId)
         .from(produtos)
-        .where(eq(produtos.identificador, identificador));
-      return linha ? paraProduto(linha) : null;
+        .where(and(eq(produtos.identificador, identificador), naoExcluido));
+      const [produto] = await comContagem(linhas);
+      return produto ?? null;
+    },
+
+    /**
+     * Exclusão do Produto: ele e as Licenças dele saem das listas e das consultas,
+     * e a Validação com o identificador dele responde 404 (ProdutoNaoEncontrado).
+     * Nada é apagado. Recusa (ExclusaoNaoPermitida) se houver Licença em uso Ativa
+     * ou Suspensa; lança ProdutoNaoEncontrado se não houver Produto não excluído.
+     */
+    async excluirProduto(identificador: string): Promise<void> {
+      const agora = relogio.agora();
+      await banco.transaction(async (tx) => {
+        // Travado: Emissões e restaurações de Licença simultâneas esperam a Exclusão terminar.
+        const [produto] = await tx
+          .select({ id: produtos.id })
+          .from(produtos)
+          .where(and(eq(produtos.identificador, identificador), naoExcluido))
+          .for("update");
+        if (!produto) throw new ProdutoNaoEncontrado();
+        await recusarSeHaLicencaEmVigor(
+          tx,
+          eq(licencas.produtoId, produto.id),
+          "O Produto tem Licença Ativa ou Suspensa: revogue-a ou exclua-a antes.",
+          agora,
+        );
+        await tx.update(produtos).set({ excluidoEm: agora }).where(eq(produtos.id, produto.id));
+      });
+    },
+
+    /** Desfaz a Exclusão: o Produto volta com as Licenças dele. Lança ProdutoNaoEncontrado se não houver Produto excluído. */
+    async restaurarProduto(identificador: string): Promise<void> {
+      const restaurados = await banco
+        .update(produtos)
+        .set({ excluidoEm: null })
+        .where(and(eq(produtos.identificador, identificador), isNotNull(produtos.excluidoEm)))
+        .returning({ id: produtos.id });
+      if (restaurados.length === 0) throw new ProdutoNaoEncontrado();
     },
   };
 }

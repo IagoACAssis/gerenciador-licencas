@@ -14,6 +14,8 @@ import {
 } from "../acoes";
 import { Estado } from "../tabela";
 import { FormularioAcao } from "./formulario-acao";
+import { excluirLicenca } from "../../excluidos/acoes";
+import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +41,10 @@ function descreverEvento(evento: EventoLicenca): string {
       return "Reativação.";
     case "revogacao":
       return "Revogação.";
+    case "exclusao":
+      return "Exclusão.";
+    case "restauracao":
+      return "Restauração.";
     case "emissao": {
       const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
       return `Emissão: ${validade}, Limite de ativações ${descreverLimite(evento.limiteAtivacoes)}.`;
@@ -198,6 +204,12 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
           </li>
         ))}
       </ol>
+      <h2>Exclusão</h2>
+      <p>
+        Para uma Licença emitida por engano, em qualquer estado. Ela sai das listas e a Validação passa a
+        responder "chave inválida". A restauração a devolve como estava, com a mesma Chave de licença.
+      </p>
+      <FormularioExclusao acao={excluirLicenca} campos={{ prefixo: licenca.prefixo }} item="esta Licença" />
     </>
   );
 }

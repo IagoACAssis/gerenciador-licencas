@@ -4,6 +4,8 @@ import { nucleoDaInstancia } from "@/nucleo/producao";
 import { editarProduto } from "../acoes";
 import { BotaoCopiar } from "../../botao-copiar";
 import { FormularioProduto } from "../formulario-produto";
+import { excluirProduto } from "../../excluidos/acoes";
+import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +52,13 @@ export default async function DetalheProduto({ params }: { params: Promise<{ ide
           toleranciaOfflineDias: String(regras.toleranciaOfflineDias),
         }}
       />
+
+      <h2>Exclusão</h2>
+      <p>
+        Para um Produto cadastrado por engano. Ele e as Licenças dele saem das listas, e a Validação com o
+        identificador dele passa a responder 404. Não é possível com Licença Ativa ou Suspensa.
+      </p>
+      <FormularioExclusao acao={excluirProduto} campos={{ identificador: produto.identificador }} item="este Produto" />
     </>
   );
 }

@@ -50,6 +50,13 @@
       "when": 1795233391276,
       "tag": "0006_ciclo_de_vida",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795234404624,
+      "tag": "0007_exclusao",
+      "breakpoints": true
     }
   ]
 }

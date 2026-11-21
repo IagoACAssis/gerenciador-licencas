@@ -1,8 +1,9 @@
 import { sign } from "node:crypto";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { ativacoes, licencas, produtos, substituicoesAtivacao } from "../banco/esquema.ts";
 import { emGrupos, hashDaChave } from "./chave-licenca.ts";
 import { decifrarChavePrivada } from "./chaves.ts";
+import { estaEmUso } from "./exclusao.ts";
 import {
   calcularSituacao,
   fimDaToleranciaOffline,
@@ -174,11 +175,14 @@ export function casosDeUsoDeValidacao({ banco, relogio, segredoChaves }: Depende
     async validar(dados: PedidoValidacao): Promise<RespostaAssinada> {
       const pedido = lerPedido(dados);
       const agora = relogio.agora();
-      const [produto] = await banco.select().from(produtos).where(eq(produtos.identificador, pedido.produto));
+      const [produto] = await banco
+        .select()
+        .from(produtos)
+        .where(and(eq(produtos.identificador, pedido.produto), isNull(produtos.excluidoEm)));
       if (!produto) throw new ProdutoNaoEncontrado();
 
       const carga = await banco.transaction(async (tx) => {
-        const [licenca] =
+        const [encontrada] =
           pedido.chave.length > MAXIMO_IDENTIFICADOR
             ? []
             : await tx
@@ -186,7 +190,9 @@ export function casosDeUsoDeValidacao({ banco, relogio, segredoChaves }: Depende
                 .from(licencas)
                 .where(and(eq(licencas.produtoId, produto.id), eq(licencas.hashChave, hashDaChave(pedido.chave))))
                 .for("update");
-        // Mesma recusa para Chave inexistente, de outro Produto ou antiga: nada identifica a Licença.
+        // Conferido depois da trava, como nas ações do Administrador: a Licença fora de uso não existe para a Validação.
+        const licenca = encontrada && (await estaEmUso(tx, encontrada.id)) ? encontrada : undefined;
+        // Mesma recusa para Chave inexistente, de outro Produto, antiga ou de Licença fora de uso: nada identifica a Licença.
         if (!licenca) {
           return {
             produto: produto.identificador,

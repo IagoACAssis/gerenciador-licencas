@@ -35,7 +35,7 @@ dl { display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; margi
 dt { font-weight: 600; }
 dd { margin: 0; }
 ol.historico { padding-left: 20px; }
-form.acao-licenca { margin-bottom: 12px; }
-form.acao-licenca fieldset { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; border: 0; padding: 0; margin: 0; }
-form.acao-licenca small { flex-basis: 100%; }
+form.acao { margin-bottom: 12px; }
+form.acao fieldset { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; border: 0; padding: 0; margin: 0; }
+form.acao small { flex-basis: 100%; }
 label.confirmacao { display: flex; gap: 8px; align-items: center; }
