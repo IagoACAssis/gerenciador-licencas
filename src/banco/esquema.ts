@@ -73,3 +73,19 @@ export const eventosLicenca = pgTable(
   },
   (tabela) => [index("eventos_licenca_licenca").on(tabela.licencaId)],
 );
+
+/** Vínculo entre uma Licença e um Dispositivo. Um por Licença + Dispositivo. */
+export const ativacoes = pgTable(
+  "ativacoes",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    licencaId: integer("licenca_id").notNull().references(() => licencas.id),
+    /** Identificador opaco enviado pelo Produto; a Instância não o interpreta. */
+    dispositivo: text("dispositivo").notNull(),
+    /** Nome legível enviado pelo Produto, se houver. */
+    nomeDispositivo: text("nome_dispositivo"),
+    ativadaEm: timestamp("ativada_em", { withTimezone: true }).notNull(),
+    ultimaValidacaoEm: timestamp("ultima_validacao_em", { withTimezone: true }).notNull(),
+  },
+  (tabela) => [uniqueIndex("ativacoes_licenca_dispositivo_unico").on(tabela.licencaId, tabela.dispositivo)],
+);

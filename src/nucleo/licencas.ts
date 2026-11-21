@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, like, type SQL } from "drizzle-orm";
-import { clientes, eventosLicenca, licencas, produtos } from "../banco/esquema.ts";
+import { ativacoes, clientes, eventosLicenca, licencas, produtos } from "../banco/esquema.ts";
 import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, normalizarChave } from "./chave-licenca.ts";
-import { calcularSituacao, type EstadoLicenca } from "./estado.ts";
+import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
 export { ESTADOS_LICENCA, type EstadoLicenca } from "./estado.ts";
@@ -42,8 +42,18 @@ export type EventoLicenca = {
   limiteAtivacoes: number | null;
 };
 
+/** Ativação da Licença como o painel a mostra. */
+export interface Ativacao {
+  dispositivo: string;
+  nomeDispositivo: string | null;
+  ativadaEm: Date;
+  ultimaValidacaoEm: Date;
+}
+
 export interface DetalheLicenca extends Licenca {
   historico: EventoLicenca[];
+  /** Da mais antiga para a mais nova. */
+  ativacoes: Ativacao[];
 }
 
 export interface FiltroLicencas {
@@ -99,7 +109,7 @@ function paraLicenca(linha: Linha, agora: Date): Licenca {
     produto: { identificador: linha.produtoIdentificador, nome: linha.produtoNome },
     cliente: { id: linha.clienteId, nome: linha.clienteNome, email: linha.clienteEmail },
     validaAte: linha.validaAte,
-    limiteAtivacoes: linha.limiteAtivacoes ?? linha.limiteAtivacoesPadrao,
+    limiteAtivacoes: limiteDeAtivacoes(linha, linha),
     limiteProprio: linha.limiteAtivacoes,
     ...situacao,
     emitidaEm: linha.emitidaEm,
@@ -217,7 +227,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
         .filter((licenca) => !filtro.aVencer || licenca.aVencer);
     },
 
-    /** Detalhe da Licença pelo prefixo da Chave (com ou sem hífen), com o histórico em ordem. */
+    /** Detalhe da Licença pelo prefixo da Chave (com ou sem hífen), com o histórico e as Ativações em ordem. */
     async obterLicenca(prefixo: string): Promise<DetalheLicenca | null> {
       const normalizado = normalizarChave(prefixo);
       if (normalizado.length !== TAMANHO_DO_PREFIXO) return null;
@@ -228,7 +238,21 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
         .from(eventosLicenca)
         .where(eq(eventosLicenca.licencaId, linha.id))
         .orderBy(asc(eventosLicenca.ocorridoEm), asc(eventosLicenca.id));
-      return { ...paraLicenca(linha, relogio.agora()), historico: eventos.map(paraEvento) };
+      const ativacoesDaLicenca = await banco
+        .select({
+          dispositivo: ativacoes.dispositivo,
+          nomeDispositivo: ativacoes.nomeDispositivo,
+          ativadaEm: ativacoes.ativadaEm,
+          ultimaValidacaoEm: ativacoes.ultimaValidacaoEm,
+        })
+        .from(ativacoes)
+        .where(eq(ativacoes.licencaId, linha.id))
+        .orderBy(asc(ativacoes.ativadaEm), asc(ativacoes.id));
+      return {
+        ...paraLicenca(linha, relogio.agora()),
+        historico: eventos.map(paraEvento),
+        ativacoes: ativacoesDaLicenca,
+      };
     },
   };
 }

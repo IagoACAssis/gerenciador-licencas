@@ -3,6 +3,7 @@ import type { Banco } from "../banco/conexao.ts";
 import { casosDeUsoDeClientes } from "./clientes.ts";
 import { casosDeUsoDeLicencas } from "./licencas.ts";
 import { casosDeUsoDeProdutos } from "./produtos.ts";
+import { casosDeUsoDeValidacao } from "./validacao.ts";
 
 export {
   ProdutoNaoEncontrado,
@@ -26,12 +27,22 @@ export {
   ESTADOS_LICENCA,
   type CampoLicenca,
   type DadosEmissao,
+  type Ativacao,
   type DetalheLicenca,
   type EstadoLicenca,
   type EventoLicenca,
   type FiltroLicencas,
   type Licenca,
 } from "./licencas.ts";
+
+export {
+  DadosDeValidacaoInvalidos,
+  type CampoValidacao,
+  type CargaValidacao,
+  type MotivoRecusa,
+  type PedidoValidacao,
+  type RespostaAssinada,
+} from "./validacao.ts";
 
 export interface Relogio {
   agora(): Date;
@@ -64,6 +75,7 @@ export function criarNucleo(dependencias: DependenciasNucleo) {
     ...casosDeUsoDeProdutos(dependencias),
     ...casosDeUsoDeClientes(dependencias),
     ...casosDeUsoDeLicencas(dependencias),
+    ...casosDeUsoDeValidacao(dependencias),
   };
 }
 

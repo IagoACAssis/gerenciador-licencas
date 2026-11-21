@@ -34,7 +34,7 @@ Requisitos: Docker com Docker Compose. Para gerar o hash da senha, também Node 
 
    O `-f docker-compose.yml` deixa de fora o `docker-compose.override.yml`, que é só de desenvolvimento (expõe o Postgres na máquina e cria o banco de testes). Sem o `-f`, o docker compose carrega o override sozinho.
 
-   A cada início, a aplicação aplica as migrações pendentes do banco, em ordem, e só depois passa a atender. O painel fica em <http://localhost:3000>, e `GET /api/saude` informa se a Instância alcança o banco.
+   A cada início, a aplicação aplica as migrações pendentes do banco, em ordem, e só depois passa a atender. O painel fica em <http://localhost:3000>, e `GET /api/saude` informa se a Instância alcança o banco. Os Produtos consultam as Licenças pela API de Validação, `POST /api/v1/validacoes`. O formato da Resposta assinada e como conferi-la estão em [`docs/validacao.md`](docs/validacao.md).
 
 Para atualizar a Instância, baixe a versão nova e rode o mesmo comando de novo.
 
@@ -86,7 +86,7 @@ O banco `licencas_teste` é criado na primeira inicialização do volume do Post
 
 ### Estrutura
 
-- `src/nucleo/`: o núcleo de licenciamento, onde ficam todas as regras do domínio. Recebe banco, relógio e aleatoriedade injetados. Os testes usam só a interface pública dele.
+- `src/nucleo/`: o núcleo de licenciamento, onde ficam todas as regras do domínio, inclusive a Validação. Recebe banco, relógio e aleatoriedade injetados. Os testes usam só a interface pública dele.
 - `src/app/`: as telas do painel e as rotas da API. Elas só traduzem HTTP e formulários em chamadas ao núcleo.
 - `src/acesso/`: a entrada do Administrador (senha e cookie de sessão).
 - `src/limite/`: o limite de requisições por IP, usado pela API de Validação e pela entrada do Administrador.

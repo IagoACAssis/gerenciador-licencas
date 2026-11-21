@@ -322,6 +322,7 @@ describe("Licenças", () => {
       expect(await nucleo.obterLicenca(licenca.prefixo.toLowerCase())).toEqual({
         ...licenca,
         historico: [{ tipo: "emissao", ocorridoEm: INICIO, validaAte: daquiA(30), limiteAtivacoes: 2 }],
+        ativacoes: [],
       });
     });
 

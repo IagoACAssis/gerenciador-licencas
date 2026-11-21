@@ -40,6 +40,31 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
           <dd>{formatarDataHora(licenca.emitidaEm)}</dd>
         </dl>
       </section>
+      <h2>Ativações ({licenca.ativacoes.length} de {licenca.limiteAtivacoes})</h2>
+      {licenca.ativacoes.length === 0 ? (
+        <p>Nenhuma Ativação ainda. Ela é criada na primeira Validação num Dispositivo.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Dispositivo</th>
+              <th>Nome</th>
+              <th>Ativada em</th>
+              <th>Última Validação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {licenca.ativacoes.map((ativacao) => (
+              <tr key={ativacao.dispositivo}>
+                <td><code>{ativacao.dispositivo}</code></td>
+                <td>{ativacao.nomeDispositivo ?? "—"}</td>
+                <td>{formatarDataHora(ativacao.ativadaEm)}</td>
+                <td>{formatarDataHora(ativacao.ultimaValidacaoEm)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       <h2>Histórico</h2>
       <ol className="historico">
         {licenca.historico.map((evento, i) => (

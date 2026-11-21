@@ -31,7 +31,20 @@ export function calcularSituacao(
   const momento = agora.getTime();
   const validade = licenca.validaAte.getTime();
   if (momento >= validade) {
-    return { estado: "Expirada", aVencer: false, emCarencia: momento < validade + regras.carenciaDias * UM_DIA_MS };
+    return { estado: "Expirada", aVencer: false, emCarencia: momento < fimDaCarencia(licenca.validaAte, regras).getTime() };
   }
   return { estado: "Ativa", aVencer: momento >= validade - regras.janelaAvisoDias * UM_DIA_MS, emCarencia: false };
+}
+
+/** Último instante em que a Licença ainda é aceita: data de validade + Carência. */
+export function fimDaCarencia(validaAte: Date, regras: { carenciaDias: number }): Date {
+  return new Date(validaAte.getTime() + regras.carenciaDias * UM_DIA_MS);
+}
+
+/** Limite de ativações que vale agora: o próprio da Licença ou o padrão atual do Produto. */
+export function limiteDeAtivacoes(
+  licenca: { limiteAtivacoes: number | null },
+  regras: { limiteAtivacoesPadrao: number },
+): number {
+  return licenca.limiteAtivacoes ?? regras.limiteAtivacoesPadrao;
 }

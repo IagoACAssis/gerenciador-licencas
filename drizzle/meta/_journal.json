@@ -29,6 +29,13 @@
       "when": 1795228409323,
       "tag": "0003_licencas",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795229885729,
+      "tag": "0004_ativacoes",
+      "breakpoints": true
     }
   ]
 }
