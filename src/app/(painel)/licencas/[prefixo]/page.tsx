@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import type { EventoLicenca } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
@@ -19,6 +21,14 @@ import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
 import { AreaDaTrocaDeChave, FormularioTrocaDeChave } from "./formulario-troca-de-chave";
 
 export const dynamic = "force-dynamic";
+
+/** Uma consulta só por requisição, para o título e para a página. */
+const obterLicenca = cache((prefixo: string) => nucleoDaInstancia().obterLicenca(decodeURIComponent(prefixo)));
+
+export async function generateMetadata({ params }: { params: Promise<{ prefixo: string }> }): Promise<Metadata> {
+  const licenca = await obterLicenca((await params).prefixo);
+  return { title: licenca && `Licença ${licenca.prefixo}…` };
+}
 
 function descreverLimite(limite: number | null): string {
   return limite === null ? "padrão do Produto" : String(limite);
@@ -57,163 +67,165 @@ function descreverEvento(evento: EventoLicenca): string {
 
 export default async function DetalheLicenca({ params }: { params: Promise<{ prefixo: string }> }) {
   const { prefixo } = await params;
-  const licenca = await nucleoDaInstancia().obterLicenca(decodeURIComponent(prefixo));
+  const licenca = await obterLicenca(prefixo);
   if (!licenca) notFound();
 
   return (
-    <AreaDaTrocaDeChave>
-      <p><Link href="/licencas">← Licenças</Link></p>
-      <h1>Licença <code>{licenca.prefixo}…</code></h1>
-      <section className="cartao">
-        <dl>
-          <dt>Estado</dt>
-          <dd><Estado licenca={licenca} /></dd>
-          <dt>Produto</dt>
-          <dd><Link href={`/produtos/${licenca.produto.identificador}`}>{licenca.produto.nome}</Link></dd>
-          <dt>Cliente</dt>
-          <dd><Link href={`/clientes/${licenca.cliente.id}`}>{licenca.cliente.nome}</Link> ({licenca.cliente.email})</dd>
-          <dt>Data de validade</dt>
-          <dd>{licenca.validaAte ? formatarData(licenca.validaAte) : "Perpétua"}</dd>
-          <dt>Limite de ativações</dt>
-          <dd>{licenca.limiteAtivacoes}{licenca.limiteProprio === null && " (padrão do Produto)"}</dd>
-          <dt>Emitida em</dt>
-          <dd>{formatarDataHora(licenca.emitidaEm)}</dd>
-        </dl>
-      </section>
-      <h2>Ciclo de vida</h2>
-      <section className="cartao ciclo-de-vida">
-        {licenca.estado === "Revogada" ? (
-          <p>Licença Revogada: a Revogação é definitiva e a Licença não pode mais ser alterada.</p>
-        ) : (
-          <>
-            {licenca.validaAte && (
-              <FormularioAcao acao={renovarLicenca} prefixo={licenca.prefixo}>
+    <div className="legado">
+      <AreaDaTrocaDeChave>
+        <p><Link href="/licencas">← Licenças</Link></p>
+        <h1>Licença <code>{licenca.prefixo}…</code></h1>
+        <section className="cartao">
+          <dl>
+            <dt>Estado</dt>
+            <dd><Estado licenca={licenca} /></dd>
+            <dt>Produto</dt>
+            <dd><Link href={`/produtos/${licenca.produto.identificador}`}>{licenca.produto.nome}</Link></dd>
+            <dt>Cliente</dt>
+            <dd><Link href={`/clientes/${licenca.cliente.id}`}>{licenca.cliente.nome}</Link> ({licenca.cliente.email})</dd>
+            <dt>Data de validade</dt>
+            <dd>{licenca.validaAte ? formatarData(licenca.validaAte) : "Perpétua"}</dd>
+            <dt>Limite de ativações</dt>
+            <dd>{licenca.limiteAtivacoes}{licenca.limiteProprio === null && " (padrão do Produto)"}</dd>
+            <dt>Emitida em</dt>
+            <dd>{formatarDataHora(licenca.emitidaEm)}</dd>
+          </dl>
+        </section>
+        <h2>Ciclo de vida</h2>
+        <section className="cartao ciclo-de-vida">
+          {licenca.estado === "Revogada" ? (
+            <p>Licença Revogada: a Revogação é definitiva e a Licença não pode mais ser alterada.</p>
+          ) : (
+            <>
+              {licenca.validaAte && (
+                <FormularioAcao acao={renovarLicenca} prefixo={licenca.prefixo}>
+                  <label>
+                    Nova data de validade
+                    <input name="validaAte" type="date" required />
+                  </label>
+                  <button type="submit">Renovar</button>
+                  <small>Muda só a data de validade; a Chave de licença e as Ativações continuam as mesmas.</small>
+                </FormularioAcao>
+              )}
+              <FormularioAcao acao={alterarLimiteDeAtivacoes} prefixo={licenca.prefixo}>
                 <label>
-                  Nova data de validade
-                  <input name="validaAte" type="date" required />
+                  Limite de ativações
+                  <input
+                    name="limiteAtivacoes"
+                    type="number"
+                    min={0}
+                    step={1}
+                    inputMode="numeric"
+                    defaultValue={licenca.limiteProprio ?? ""}
+                  />
                 </label>
-                <button type="submit">Renovar</button>
-                <small>Muda só a data de validade; a Chave de licença e as Ativações continuam as mesmas.</small>
+                <button type="submit">Alterar limite</button>
+                <small>Vazio, segue o padrão do Produto. Um limite menor não remove Ativações existentes.</small>
               </FormularioAcao>
-            )}
-            <FormularioAcao acao={alterarLimiteDeAtivacoes} prefixo={licenca.prefixo}>
-              <label>
-                Limite de ativações
-                <input
-                  name="limiteAtivacoes"
-                  type="number"
-                  min={0}
-                  step={1}
-                  inputMode="numeric"
-                  defaultValue={licenca.limiteProprio ?? ""}
-                />
-              </label>
-              <button type="submit">Alterar limite</button>
-              <small>Vazio, segue o padrão do Produto. Um limite menor não remove Ativações existentes.</small>
-            </FormularioAcao>
-            {licenca.estado === "Suspensa" ? (
-              <FormularioAcao acao={reativarLicenca} prefixo={licenca.prefixo}>
-                <button type="submit">Reativar</button>
-                <small>As Ativações voltam a valer.</small>
+              {licenca.estado === "Suspensa" ? (
+                <FormularioAcao acao={reativarLicenca} prefixo={licenca.prefixo}>
+                  <button type="submit">Reativar</button>
+                  <small>As Ativações voltam a valer.</small>
+                </FormularioAcao>
+              ) : (
+                <FormularioAcao acao={suspenderLicenca} prefixo={licenca.prefixo}>
+                  <button type="submit">Suspender</button>
+                  <small>As Ativações são mantidas, mas a Validação passa a recusá-las até a reativação.</small>
+                </FormularioAcao>
+              )}
+              <FormularioAcao acao={revogarLicenca} prefixo={licenca.prefixo}>
+                <label className="confirmacao">
+                  <input name="confirmacao" type="checkbox" value="sim" required />
+                  Entendo que a Revogação é definitiva e não pode ser desfeita.
+                </label>
+                <button type="submit">Revogar</button>
               </FormularioAcao>
-            ) : (
-              <FormularioAcao acao={suspenderLicenca} prefixo={licenca.prefixo}>
-                <button type="submit">Suspender</button>
-                <small>As Ativações são mantidas, mas a Validação passa a recusá-las até a reativação.</small>
-              </FormularioAcao>
-            )}
-            <FormularioAcao acao={revogarLicenca} prefixo={licenca.prefixo}>
-              <label className="confirmacao">
-                <input name="confirmacao" type="checkbox" value="sim" required />
-                Entendo que a Revogação é definitiva e não pode ser desfeita.
-              </label>
-              <button type="submit">Revogar</button>
-            </FormularioAcao>
-            <FormularioTrocaDeChave prefixo={licenca.prefixo} />
-          </>
+              <FormularioTrocaDeChave prefixo={licenca.prefixo} />
+            </>
+          )}
+        </section>
+        <h2>Ativações ({licenca.ativacoes.length} de {licenca.limiteAtivacoes})</h2>
+        {licenca.ativacoes.length === 0 ? (
+          <p>Nenhuma Ativação ainda. Ela é criada na primeira Validação num Dispositivo.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Dispositivo</th>
+                <th>Nome</th>
+                <th>Ativada em</th>
+                <th>Última Validação</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {licenca.ativacoes.map((ativacao) => (
+                <tr key={ativacao.dispositivo}>
+                  <td><code>{ativacao.dispositivo}</code></td>
+                  <td>{ativacao.nomeDispositivo ?? "—"}</td>
+                  <td>{formatarDataHora(ativacao.ativadaEm)}</td>
+                  <td>{formatarDataHora(ativacao.ultimaValidacaoEm)}</td>
+                  <td>
+                    <form action={removerAtivacao}>
+                      <input type="hidden" name="prefixo" value={licenca.prefixo} />
+                      <input type="hidden" name="dispositivo" value={ativacao.dispositivo} />
+                      <button type="submit">Remover</button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
-      </section>
-      <h2>Ativações ({licenca.ativacoes.length} de {licenca.limiteAtivacoes})</h2>
-      {licenca.ativacoes.length === 0 ? (
-        <p>Nenhuma Ativação ainda. Ela é criada na primeira Validação num Dispositivo.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Dispositivo</th>
-              <th>Nome</th>
-              <th>Ativada em</th>
-              <th>Última Validação</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {licenca.ativacoes.map((ativacao) => (
-              <tr key={ativacao.dispositivo}>
-                <td><code>{ativacao.dispositivo}</code></td>
-                <td>{ativacao.nomeDispositivo ?? "—"}</td>
-                <td>{formatarDataHora(ativacao.ativadaEm)}</td>
-                <td>{formatarDataHora(ativacao.ultimaValidacaoEm)}</td>
-                <td>
-                  <form action={removerAtivacao}>
-                    <input type="hidden" name="prefixo" value={licenca.prefixo} />
-                    <input type="hidden" name="dispositivo" value={ativacao.dispositivo} />
-                    <button type="submit">Remover</button>
-                  </form>
-                </td>
+        <h2>Substituições de ativação</h2>
+        <p>
+          {licenca.substituicoesNoPeriodo} de {licenca.cotaSubstituicoes.quantidade} da Cota de substituições
+          nos últimos {licenca.cotaSubstituicoes.dias} dias
+          {licenca.contagemSubstituicoesZeradaEm &&
+            `, sem contar as feitas até a contagem ser zerada em ${formatarDataHora(licenca.contagemSubstituicoesZeradaEm)}`}
+          . Remover uma Ativação não gasta a Cota.
+        </p>
+        <form action={zerarContagemDeSubstituicoes}>
+          <input type="hidden" name="prefixo" value={licenca.prefixo} />
+          <button type="submit" disabled={licenca.substituicoesNoPeriodo === 0}>Zerar contagem</button>
+        </form>
+        {licenca.substituicoes.length > 0 && (
+          <table>
+            <thead>
+              <tr>
+                <th>Feita em</th>
+                <th>Dispositivo removido</th>
+                <th>Dispositivo novo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <h2>Substituições de ativação</h2>
-      <p>
-        {licenca.substituicoesNoPeriodo} de {licenca.cotaSubstituicoes.quantidade} da Cota de substituições
-        nos últimos {licenca.cotaSubstituicoes.dias} dias
-        {licenca.contagemSubstituicoesZeradaEm &&
-          `, sem contar as feitas até a contagem ser zerada em ${formatarDataHora(licenca.contagemSubstituicoesZeradaEm)}`}
-        . Remover uma Ativação não gasta a Cota.
-      </p>
-      <form action={zerarContagemDeSubstituicoes}>
-        <input type="hidden" name="prefixo" value={licenca.prefixo} />
-        <button type="submit" disabled={licenca.substituicoesNoPeriodo === 0}>Zerar contagem</button>
-      </form>
-      {licenca.substituicoes.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Feita em</th>
-              <th>Dispositivo removido</th>
-              <th>Dispositivo novo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {licenca.substituicoes.map((substituicao, i) => (
-              <tr key={i}>
-                <td>{formatarDataHora(substituicao.feitaEm)}</td>
-                <td><code>{substituicao.dispositivoRemovido}</code></td>
-                <td><code>{substituicao.dispositivoNovo}</code></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <h2>Histórico</h2>
-      <ol className="historico">
-        {licenca.historico.map((evento, i) => (
-          <li key={i}>
-            <time dateTime={evento.ocorridoEm.toISOString()}>{formatarDataHora(evento.ocorridoEm)}</time>
-            {" — "}
-            {descreverEvento(evento)}
-          </li>
-        ))}
-      </ol>
-      <h2>Exclusão</h2>
-      <p>
-        Para uma Licença emitida por engano, em qualquer estado. Ela sai das listas e a Validação passa a
-        responder "chave inválida". A restauração a devolve como estava, com a mesma Chave de licença.
-      </p>
-      <FormularioExclusao acao={excluirLicenca} campos={{ prefixo: licenca.prefixo }} item="esta Licença" />
-    </AreaDaTrocaDeChave>
+            </thead>
+            <tbody>
+              {licenca.substituicoes.map((substituicao, i) => (
+                <tr key={i}>
+                  <td>{formatarDataHora(substituicao.feitaEm)}</td>
+                  <td><code>{substituicao.dispositivoRemovido}</code></td>
+                  <td><code>{substituicao.dispositivoNovo}</code></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <h2>Histórico</h2>
+        <ol className="historico">
+          {licenca.historico.map((evento, i) => (
+            <li key={i}>
+              <time dateTime={evento.ocorridoEm.toISOString()}>{formatarDataHora(evento.ocorridoEm)}</time>
+              {" — "}
+              {descreverEvento(evento)}
+            </li>
+          ))}
+        </ol>
+        <h2>Exclusão</h2>
+        <p>
+          Para uma Licença emitida por engano, em qualquer estado. Ela sai das listas e a Validação passa a
+          responder "chave inválida". A restauração a devolve como estava, com a mesma Chave de licença.
+        </p>
+        <FormularioExclusao acao={excluirLicenca} campos={{ prefixo: licenca.prefixo }} item="esta Licença" />
+      </AreaDaTrocaDeChave>
+    </div>
   );
 }

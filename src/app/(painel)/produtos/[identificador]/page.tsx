@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { editarProduto } from "../acoes";
@@ -9,14 +11,22 @@ import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
 
 export const dynamic = "force-dynamic";
 
+/** Uma consulta só por requisição, para o título e para a página. */
+const obterProduto = cache((identificador: string) => nucleoDaInstancia().obterProduto(identificador));
+
+export async function generateMetadata({ params }: { params: Promise<{ identificador: string }> }): Promise<Metadata> {
+  const produto = await obterProduto((await params).identificador);
+  return { title: produto?.nome };
+}
+
 export default async function DetalheProduto({ params }: { params: Promise<{ identificador: string }> }) {
   const { identificador } = await params;
-  const produto = await nucleoDaInstancia().obterProduto(identificador);
+  const produto = await obterProduto(identificador);
   if (!produto) notFound();
   const { regras } = produto;
 
   return (
-    <>
+    <div className="legado">
       <p><Link href="/produtos">← Produtos</Link></p>
       <h1>{produto.nome}</h1>
       <p>
@@ -59,6 +69,6 @@ export default async function DetalheProduto({ params }: { params: Promise<{ ide
         identificador dele passa a responder 404. Não é possível com Licença Ativa ou Suspensa.
       </p>
       <FormularioExclusao acao={excluirProduto} campos={{ identificador: produto.identificador }} item="este Produto" />
-    </>
+    </div>
   );
 }
