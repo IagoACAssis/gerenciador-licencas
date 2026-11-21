@@ -1,14 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const ABAS = [
-  { href: "/", rotulo: "Início" },
-  { href: "/produtos", rotulo: "Produtos" },
-  { href: "/clientes", rotulo: "Clientes" },
-  { href: "/licencas", rotulo: "Licenças" },
-  { href: "/excluidos", rotulo: "Excluídos" },
-];
+import { AREAS_DO_PAINEL } from "@/componentes/areas-do-painel";
 
 function abaAtual(caminho: string, href: string): boolean {
   return href === "/" ? caminho === "/" : caminho === href || caminho.startsWith(`${href}/`);
@@ -19,7 +12,7 @@ export function Abas() {
   const caminho = usePathname();
   return (
     <nav aria-label="Painel" className="-mb-px flex gap-1 overflow-x-auto px-2 [scrollbar-width:none] md:px-6">
-      {ABAS.map((aba) => {
+      {AREAS_DO_PAINEL.map((aba) => {
         const atual = abaAtual(caminho, aba.href);
         return (
           <Link
