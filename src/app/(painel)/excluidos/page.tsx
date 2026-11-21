@@ -24,12 +24,12 @@ export default async function Excluidos() {
       ) : (
         <>
           {produtos.length > 0 && (
-            <Secao id="produtos" titulo="Produtos" quantidade={produtos.length} colunas={["Nome", "Identificador público", "Excluído em"]}>
+            <Secao id="produtos" titulo="Produtos" quantidade={produtos.length} colunas={["Nome", "Identificador público"]} tituloDaData="Excluído em">
               {produtos.map((produto) => (
                 <Linha
                   key={produto.identificador}
                   excluidoEm={produto.excluidoEm}
-                  restaurar={
+                  acao={
                     <DialogoDeConfirmacao
                       rotulo="Restaurar"
                       titulo="Restaurar este Produto?"
@@ -49,12 +49,12 @@ export default async function Excluidos() {
             </Secao>
           )}
           {clientes.length > 0 && (
-            <Secao id="clientes" titulo="Clientes" quantidade={clientes.length} colunas={["Nome", "E-mail", "Excluído em"]}>
+            <Secao id="clientes" titulo="Clientes" quantidade={clientes.length} colunas={["Nome", "E-mail"]} tituloDaData="Excluído em">
               {clientes.map((cliente) => (
                 <Linha
                   key={cliente.id}
                   excluidoEm={cliente.excluidoEm}
-                  restaurar={
+                  acao={
                     <DialogoDeConfirmacao
                       rotulo="Restaurar"
                       titulo="Restaurar este Cliente?"
@@ -72,12 +72,12 @@ export default async function Excluidos() {
             </Secao>
           )}
           {licencas.length > 0 && (
-            <Secao id="licencas" titulo="Licenças" quantidade={licencas.length} colunas={["Licença", "Cliente", "Produto", "Excluída em"]}>
+            <Secao id="licencas" titulo="Licenças" quantidade={licencas.length} colunas={["Licença", "Cliente", "Produto"]} tituloDaData="Excluída em">
               {licencas.map((licenca) => (
                 <Linha
                   key={licenca.prefixo}
                   excluidoEm={licenca.excluidaEm}
-                  restaurar={
+                  acao={
                     <DialogoDeConfirmacao
                       rotulo="Restaurar"
                       titulo="Restaurar esta Licença?"
@@ -102,11 +102,13 @@ export default async function Excluidos() {
 }
 
 /** Uma tabela de excluídos (Produtos, Clientes ou Licenças), com a data da Exclusão e a restauração no fim. */
-function Secao({ id, titulo, quantidade, colunas, children }: {
+function Secao({ id, titulo, quantidade, colunas, tituloDaData, children }: {
   id: string;
   titulo: string;
   quantidade: number;
+  /** Os títulos das colunas do item; a da data ("Excluído em") e a da ação vêm depois, como em `Linha`. */
   colunas: string[];
+  tituloDaData: string;
   children: ReactNode;
 }) {
   return (
@@ -122,6 +124,7 @@ function Secao({ id, titulo, quantidade, colunas, children }: {
               {colunas.map((coluna) => (
                 <th key={coluna} scope="col" className="px-4 py-2.5 font-medium whitespace-nowrap">{coluna}</th>
               ))}
+              <th scope="col" className="px-4 py-2.5 font-medium whitespace-nowrap">{tituloDaData}</th>
               <th scope="col" className="px-4 py-2.5"><span className="sr-only">Ação</span></th>
             </tr>
           </thead>
@@ -132,15 +135,15 @@ function Secao({ id, titulo, quantidade, colunas, children }: {
   );
 }
 
-/** Uma linha de excluído: as células do item (`children`), a data da Exclusão e o botão de restaurar. */
-function Linha({ excluidoEm, restaurar, children }: { excluidoEm: Date; restaurar: ReactNode; children: ReactNode }) {
+/** Uma linha de excluído: as células do item (`children`), a data da Exclusão e a ação de restaurar. */
+function Linha({ excluidoEm, acao, children }: { excluidoEm: Date; acao: ReactNode; children: ReactNode }) {
   return (
     <tr className="transition-colors duration-150 hover:bg-elevada/50">
       {children}
       <td className="px-4 py-3 whitespace-nowrap text-suave">
         <time dateTime={excluidoEm.toISOString()}>{formatarDataHora(excluidoEm)}</time>
       </td>
-      <td className="px-4 py-3 text-right">{restaurar}</td>
+      <td className="px-4 py-3 text-right">{acao}</td>
     </tr>
   );
 }
