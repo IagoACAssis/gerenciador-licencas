@@ -3,7 +3,7 @@ import { ativacoes, clientes, eventosLicenca, licencas, produtos, substituicoesA
 import { idValido, MAIOR_INTEIRO, violouUnicidade } from "../banco/postgres.ts";
 import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, lerPrefixo, normalizarChave } from "./chave-licenca.ts";
 import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
-import type { Transacao } from "../banco/conexao.ts";
+import type { Banco, Transacao } from "../banco/conexao.ts";
 import type { DependenciasNucleo } from "./index.ts";
 import { clienteNaoExcluido, estaEmUso, licencaEmUso, produtoNaoExcluido, recusarSeDonoExcluido } from "./exclusao.ts";
 import { substituicoesNoPeriodo } from "./substituicoes.ts";
@@ -154,7 +154,7 @@ const colunas = {
 type Coluna<K extends keyof typeof colunas> = (typeof colunas)[K]["_"];
 type Linha = { [K in keyof typeof colunas]: Coluna<K>["notNull"] extends true ? Coluna<K>["data"] : Coluna<K>["data"] | null };
 
-function paraLicenca(linha: Linha, agora: Date): Licenca {
+export function paraLicenca(linha: Linha, agora: Date): Licenca {
   // Regras lidas do Produto a cada cálculo: mudanças nelas valem na hora.
   const situacao = calcularSituacao(linha, linha, agora);
   return {
@@ -169,7 +169,7 @@ function paraLicenca(linha: Linha, agora: Date): Licenca {
   };
 }
 
-function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): EventoLicenca {
+export function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): EventoLicenca {
   if (
     linha.tipo === "contagem_substituicoes_zerada" ||
     linha.tipo === "suspensao" ||
@@ -260,16 +260,18 @@ async function comChaveNova<T>(
   }
 }
 
+/** Só as Licenças em uso: as excluídas e as de Produto ou Cliente excluído ficam de fora. */
+export function consultarLicencasEmUso(banco: Banco, condicao?: SQL) {
+  return banco
+    .select(colunas)
+    .from(licencas)
+    .innerJoin(produtos, eq(licencas.produtoId, produtos.id))
+    .innerJoin(clientes, eq(licencas.clienteId, clientes.id))
+    .where(and(licencaEmUso, condicao));
+}
+
 export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: DependenciasNucleo) {
-  /** Só as Licenças em uso: as excluídas e as de Produto ou Cliente excluído ficam de fora. */
-  function consulta(condicao?: SQL) {
-    return banco
-      .select(colunas)
-      .from(licencas)
-      .innerJoin(produtos, eq(licencas.produtoId, produtos.id))
-      .innerJoin(clientes, eq(licencas.clienteId, clientes.id))
-      .where(and(licencaEmUso, condicao));
-  }
+  const consulta = (condicao?: SQL) => consultarLicencasEmUso(banco, condicao);
 
   /**
    * Confere os dados da Emissão dentro da transação dela. Produto e Cliente
