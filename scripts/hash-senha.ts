@@ -1,14 +1,19 @@
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
+import { Writable } from "node:stream";
 import { gerarHashSenha } from "../src/acesso/senha.ts";
 
 // Lê a senha sem ecoar no terminal e imprime o valor para ADMIN_SENHA_HASH.
-const leitor = createInterface({ input: stdin, output: stdout, terminal: true });
-// O readline não tem opção para não ecoar; interceptamos a escrita interna dele.
-const leitorComEco = leitor as unknown as { _writeToOutput: (texto: string) => void };
-const escreverOriginal = leitorComEco._writeToOutput.bind(leitor);
+// O readline não tem opção para não ecoar; ele escreve numa saída que descarta
+// tudo enquanto a senha é digitada. Só usa API pública, que não muda entre versões do Node.
 let ocultar = false;
-leitorComEco._writeToOutput = (texto) => escreverOriginal(ocultar ? "" : texto);
+const saida = new Writable({
+  write(pedaco, codificacao, pronto) {
+    if (!ocultar) stdout.write(pedaco, codificacao);
+    pronto();
+  },
+});
+const leitor = createInterface({ input: stdin, output: saida, terminal: true });
 
 stdout.write("Senha do Administrador: ");
 ocultar = true;
