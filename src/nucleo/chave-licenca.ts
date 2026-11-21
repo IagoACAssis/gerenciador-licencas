@@ -35,6 +35,12 @@ export function emGrupos(normalizado: string): string {
   return normalizado.match(/.{1,4}/g)?.join("-") ?? "";
 }
 
+/** Prefixo da Chave, com ou sem hífen, já normalizado; null se não tiver o tamanho de um prefixo. */
+export function lerPrefixo(texto: string): string | null {
+  const normalizado = normalizarChave(texto);
+  return normalizado.length === TAMANHO_DO_PREFIXO ? normalizado : null;
+}
+
 export function hashDaChave(chave: string): string {
   return createHash("sha256").update(normalizarChave(chave)).digest("hex");
 }

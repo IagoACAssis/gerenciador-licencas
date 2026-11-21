@@ -40,7 +40,7 @@ export async function emitirLicenca(_estado: EstadoEmissao, formulario: FormData
 }
 
 /** Volta ao detalhe da Licença. Ação repetida (Ativação já removida) só recarrega; Licença inexistente volta à lista. */
-async function agirNaLicenca(prefixo: string, acao: () => Promise<void>): Promise<never> {
+async function responderAcaoNaLicenca(prefixo: string, acao: () => Promise<void>): Promise<never> {
   if (!(await administradorAutenticado())) redirect("/entrar");
   try {
     await acao();
@@ -56,10 +56,10 @@ async function agirNaLicenca(prefixo: string, acao: () => Promise<void>): Promis
 export async function removerAtivacao(formulario: FormData): Promise<void> {
   const prefixo = String(formulario.get("prefixo") ?? "");
   const dispositivo = String(formulario.get("dispositivo") ?? "");
-  await agirNaLicenca(prefixo, () => nucleoDaInstancia().removerAtivacao(prefixo, dispositivo));
+  await responderAcaoNaLicenca(prefixo, () => nucleoDaInstancia().removerAtivacao(prefixo, dispositivo));
 }
 
 export async function zerarContagemDeSubstituicoes(formulario: FormData): Promise<void> {
   const prefixo = String(formulario.get("prefixo") ?? "");
-  await agirNaLicenca(prefixo, () => nucleoDaInstancia().zerarContagemDeSubstituicoes(prefixo));
+  await responderAcaoNaLicenca(prefixo, () => nucleoDaInstancia().zerarContagemDeSubstituicoes(prefixo));
 }

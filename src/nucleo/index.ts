@@ -63,9 +63,6 @@ export interface DependenciasNucleo {
   segredoChaves: string;
 }
 
-/** Transação do banco, como os casos de uso a recebem de `banco.transaction`. */
-export type Transacao = Parameters<Parameters<Banco["transaction"]>[0]>[0];
-
 /**
  * Núcleo de licenciamento: concentra todas as regras do domínio. Rotas da API e
  * telas do painel só traduzem HTTP e formulários em chamadas a estes casos de uso.

@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, like, type SQL } from "drizzle-orm";
 import { ativacoes, clientes, eventosLicenca, licencas, produtos, substituicoesAtivacao } from "../banco/esquema.ts";
 import { idValido, MAIOR_INTEIRO, violouUnicidade } from "../banco/postgres.ts";
-import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, normalizarChave } from "./chave-licenca.ts";
+import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, lerPrefixo, normalizarChave } from "./chave-licenca.ts";
 import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
-import type { DependenciasNucleo, Transacao } from "./index.ts";
+import type { Transacao } from "../banco/conexao.ts";
+import type { DependenciasNucleo } from "./index.ts";
 import { substituicoesNoPeriodo } from "./substituicoes.ts";
 
 export { ESTADOS_LICENCA, type EstadoLicenca } from "./estado.ts";
@@ -70,6 +71,8 @@ export interface DetalheLicenca extends Licenca {
   substituicoesNoPeriodo: number;
   /** Cota de substituições atual do Produto. */
   cotaSubstituicoes: { quantidade: number; dias: number };
+  /** Último "zerar contagem": as Substituições de ativação até esse instante não contam mais. */
+  contagemSubstituicoesZeradaEm: Date | null;
 }
 
 export interface FiltroLicencas {
@@ -203,15 +206,15 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
    * Roda uma ação do Administrador sobre a Licença do prefixo, com ela travada,
    * como na Validação, e registra o evento no histórico na mesma transação.
    */
-  async function agirNaLicenca(
+  async function emTransacaoNaLicenca(
     prefixo: string,
     acao: (tx: Transacao, licenca: { id: number }, agora: Date) => Promise<NovoEvento>,
   ): Promise<void> {
-    const normalizado = normalizarChave(prefixo);
+    const normalizado = lerPrefixo(prefixo);
     const agora = relogio.agora();
     await banco.transaction(async (tx) => {
       const [licenca] =
-        normalizado.length === TAMANHO_DO_PREFIXO
+        normalizado
           ? await tx.select({ id: licencas.id }).from(licencas).where(eq(licencas.prefixoChave, normalizado)).for("update")
           : [];
       if (!licenca) throw new LicencaNaoEncontrada();
@@ -284,7 +287,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
      * AtivacaoNaoEncontrada se a Licença não tiver Ativação nesse Dispositivo.
      */
     async removerAtivacao(prefixo: string, dispositivo: string): Promise<void> {
-      await agirNaLicenca(prefixo, async (tx, licenca) => {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca) => {
         const [removida] = await tx
           .delete(ativacoes)
           .where(and(eq(ativacoes.licencaId, licenca.id), eq(ativacoes.dispositivo, dispositivo)))
@@ -300,7 +303,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
      * LicencaNaoEncontrada para um prefixo sem Licença.
      */
     async zerarContagemDeSubstituicoes(prefixo: string): Promise<void> {
-      await agirNaLicenca(prefixo, async (tx, licenca, agora) => {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca, agora) => {
         await tx.update(licencas).set({ contagemSubstituicoesZeradaEm: agora }).where(eq(licencas.id, licenca.id));
         return { tipo: "contagem_substituicoes_zerada" };
       });
@@ -308,8 +311,8 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
 
     /** Detalhe da Licença pelo prefixo da Chave (com ou sem hífen), com o histórico e as Ativações em ordem. */
     async obterLicenca(prefixo: string): Promise<DetalheLicenca | null> {
-      const normalizado = normalizarChave(prefixo);
-      if (normalizado.length !== TAMANHO_DO_PREFIXO) return null;
+      const normalizado = lerPrefixo(prefixo);
+      if (!normalizado) return null;
       const [linha] = await consulta().where(eq(licencas.prefixoChave, normalizado));
       if (!linha) return null;
       const eventos = await banco
@@ -344,6 +347,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
         substituicoes,
         substituicoesNoPeriodo: await substituicoesNoPeriodo(banco, linha, linha, agora),
         cotaSubstituicoes: { quantidade: linha.cotaSubstituicoesQuantidade, dias: linha.cotaSubstituicoesDias },
+        contagemSubstituicoesZeradaEm: linha.contagemSubstituicoesZeradaEm,
       };
     },
   };

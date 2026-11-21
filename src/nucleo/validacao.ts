@@ -10,7 +10,8 @@ import {
   type EstadoLicenca,
   type SituacaoLicenca,
 } from "./estado.ts";
-import type { DependenciasNucleo, Transacao } from "./index.ts";
+import type { Transacao } from "../banco/conexao.ts";
+import type { DependenciasNucleo } from "./index.ts";
 import { ProdutoNaoEncontrado } from "./produtos.ts";
 import { substituicoesNoPeriodo } from "./substituicoes.ts";
 

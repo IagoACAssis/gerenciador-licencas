@@ -128,7 +128,7 @@ describe("Substituição de ativação", () => {
 
       await nucleo.zerarContagemDeSubstituicoes(prefixo);
 
-      expect((await detalhe()).substituicoesNoPeriodo).toBe(0);
+      expect(await detalhe()).toMatchObject({ substituicoesNoPeriodo: 0, contagemSubstituicoesZeradaEm: daquiA(2) });
       tempo.avancar(UM_DIA);
       expect(await validar("pc-03")).toMatchObject({ resultado: "aceita" });
       // Depois de zerar, a nova Substituição conta e esgota a Cota de novo.

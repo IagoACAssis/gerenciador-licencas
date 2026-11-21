@@ -326,6 +326,7 @@ describe("Licenças", () => {
         substituicoes: [],
         substituicoesNoPeriodo: 0,
         cotaSubstituicoes: { quantidade: 2, dias: 30 },
+        contagemSubstituicoesZeradaEm: null,
       });
     });
 

@@ -82,7 +82,10 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
       <h2>Substituições de ativação</h2>
       <p>
         {licenca.substituicoesNoPeriodo} de {licenca.cotaSubstituicoes.quantidade} da Cota de substituições
-        nos últimos {licenca.cotaSubstituicoes.dias} dias. Remover uma Ativação não gasta a Cota.
+        nos últimos {licenca.cotaSubstituicoes.dias} dias
+        {licenca.contagemSubstituicoesZeradaEm &&
+          `, sem contar as feitas até a contagem ser zerada em ${formatarDataHora(licenca.contagemSubstituicoesZeradaEm)}`}
+        . Remover uma Ativação não gasta a Cota.
       </p>
       <form action={zerarContagemDeSubstituicoes}>
         <input type="hidden" name="prefixo" value={licenca.prefixo} />

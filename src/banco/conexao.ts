@@ -8,3 +8,6 @@ export function conectarBanco(url: string) {
 }
 
 export type Banco = ReturnType<typeof conectarBanco>["banco"];
+
+/** Transação do banco, como `banco.transaction` a entrega. */
+export type Transacao = Parameters<Parameters<Banco["transaction"]>[0]>[0];
