@@ -3,11 +3,17 @@ import { notFound } from "next/navigation";
 import type { EventoLicenca } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { formatarData, formatarDataHora } from "../../formatacao";
+import { removerAtivacao, zerarContagemDeSubstituicoes } from "../acoes";
 import { Estado } from "../tabela";
 
 export const dynamic = "force-dynamic";
 
 function descreverEvento(evento: EventoLicenca): string {
+  if (evento.tipo === "ativacao_removida") {
+    const nome = evento.nomeDispositivo ? ` (${evento.nomeDispositivo})` : "";
+    return `Ativação removida pelo Administrador: ${evento.dispositivo}${nome}.`;
+  }
+  if (evento.tipo === "contagem_substituicoes_zerada") return "Contagem de Substituições de ativação zerada.";
   const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
   const limite = evento.limiteAtivacoes === null
     ? "Limite de ativações padrão do Produto"
@@ -51,6 +57,7 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
               <th>Nome</th>
               <th>Ativada em</th>
               <th>Última Validação</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -60,6 +67,42 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
                 <td>{ativacao.nomeDispositivo ?? "—"}</td>
                 <td>{formatarDataHora(ativacao.ativadaEm)}</td>
                 <td>{formatarDataHora(ativacao.ultimaValidacaoEm)}</td>
+                <td>
+                  <form action={removerAtivacao}>
+                    <input type="hidden" name="prefixo" value={licenca.prefixo} />
+                    <input type="hidden" name="dispositivo" value={ativacao.dispositivo} />
+                    <button type="submit">Remover</button>
+                  </form>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <h2>Substituições de ativação</h2>
+      <p>
+        {licenca.substituicoesNoPeriodo} de {licenca.cotaSubstituicoes.quantidade} da Cota de substituições
+        nos últimos {licenca.cotaSubstituicoes.dias} dias. Remover uma Ativação não gasta a Cota.
+      </p>
+      <form action={zerarContagemDeSubstituicoes}>
+        <input type="hidden" name="prefixo" value={licenca.prefixo} />
+        <button type="submit" disabled={licenca.substituicoesNoPeriodo === 0}>Zerar contagem</button>
+      </form>
+      {licenca.substituicoes.length > 0 && (
+        <table>
+          <thead>
+            <tr>
+              <th>Feita em</th>
+              <th>Dispositivo removido</th>
+              <th>Dispositivo novo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {licenca.substituicoes.map((substituicao, i) => (
+              <tr key={i}>
+                <td>{formatarDataHora(substituicao.feitaEm)}</td>
+                <td><code>{substituicao.dispositivoRemovido}</code></td>
+                <td><code>{substituicao.dispositivoNovo}</code></td>
               </tr>
             ))}
           </tbody>

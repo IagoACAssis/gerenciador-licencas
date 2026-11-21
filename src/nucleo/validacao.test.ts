@@ -175,8 +175,8 @@ describe("Validação", () => {
     ]);
   });
 
-  it("recusa um Dispositivo novo quando o Limite de ativações foi atingido", async () => {
-    const { produto, licenca, validar } = await cenario({ limiteAtivacoesPadrao: 2 });
+  it("recusa um Dispositivo novo quando o Limite de ativações foi atingido e não há Cota de substituições", async () => {
+    const { produto, licenca, validar } = await cenario({ limiteAtivacoesPadrao: 2, cotaSubstituicoes: { quantidade: 0, dias: 30 } });
     await validar("pc-01");
     await validar("pc-02");
     tempo.avancar(UM_DIA);
@@ -225,7 +225,7 @@ describe("Validação", () => {
   });
 
   it("Validações simultâneas de Dispositivos diferentes numa Licença com limite 1 terminam com uma só Ativação", async () => {
-    const { produto, licenca, validar } = await cenario({ limiteAtivacoesPadrao: 1 });
+    const { produto, licenca, validar } = await cenario({ limiteAtivacoesPadrao: 1, cotaSubstituicoes: { quantidade: 0, dias: 30 } });
 
     const respostas = await Promise.all(["pc-01", "pc-02", "pc-03", "pc-04", "pc-05"].map((d) => validar(d)));
 

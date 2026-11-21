@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, like, type SQL } from "drizzle-orm";
-import { ativacoes, clientes, eventosLicenca, licencas, produtos } from "../banco/esquema.ts";
+import { ativacoes, clientes, eventosLicenca, licencas, produtos, substituicoesAtivacao } from "../banco/esquema.ts";
 import { idValido, MAIOR_INTEIRO, violouUnicidade } from "../banco/postgres.ts";
 import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, normalizarChave } from "./chave-licenca.ts";
 import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
-import type { DependenciasNucleo } from "./index.ts";
+import type { DependenciasNucleo, Transacao } from "./index.ts";
+import { substituicoesNoPeriodo } from "./substituicoes.ts";
 
 export { ESTADOS_LICENCA, type EstadoLicenca } from "./estado.ts";
 
@@ -36,12 +37,13 @@ export interface Licenca {
   emitidaEm: Date;
 }
 
-export type EventoLicenca = {
-  tipo: "emissao";
-  ocorridoEm: Date;
-  validaAte: Date | null;
-  limiteAtivacoes: number | null;
-};
+export type EventoLicenca =
+  | { tipo: "emissao"; ocorridoEm: Date; validaAte: Date | null; limiteAtivacoes: number | null }
+  | { tipo: "ativacao_removida"; ocorridoEm: Date; dispositivo: string; nomeDispositivo: string | null }
+  | { tipo: "contagem_substituicoes_zerada"; ocorridoEm: Date };
+
+/** Evento como a ação o descreve; a data é a da transação. */
+type NovoEvento = EventoLicenca extends infer E ? (E extends unknown ? Omit<E, "ocorridoEm"> : never) : never;
 
 /** Ativação da Licença como o painel a mostra. */
 export interface Ativacao {
@@ -51,10 +53,23 @@ export interface Ativacao {
   ultimaValidacaoEm: Date;
 }
 
+/** Registro de uma Substituição de ativação. */
+export interface SubstituicaoAtivacao {
+  dispositivoRemovido: string;
+  dispositivoNovo: string;
+  feitaEm: Date;
+}
+
 export interface DetalheLicenca extends Licenca {
   historico: EventoLicenca[];
   /** Da mais antiga para a mais nova. */
   ativacoes: Ativacao[];
+  /** Todas as Substituições de ativação da Licença, da mais antiga para a mais nova. */
+  substituicoes: SubstituicaoAtivacao[];
+  /** Substituições de ativação que contam agora para a Cota de substituições. */
+  substituicoesNoPeriodo: number;
+  /** Cota de substituições atual do Produto. */
+  cotaSubstituicoes: { quantidade: number; dias: number };
 }
 
 export interface FiltroLicencas {
@@ -78,6 +93,20 @@ export class DadosDeLicencaInvalidos extends Error {
   }
 }
 
+export class AtivacaoNaoEncontrada extends Error {
+  constructor() {
+    super("A Licença não tem Ativação neste Dispositivo.");
+    this.name = "AtivacaoNaoEncontrada";
+  }
+}
+
+export class LicencaNaoEncontrada extends Error {
+  constructor() {
+    super("Licença não encontrada.");
+    this.name = "LicencaNaoEncontrada";
+  }
+}
+
 // Colisão de prefixo (40 bits) é rara; se acontecer, basta gerar outra Chave.
 const TENTATIVAS_DE_CHAVE = 5;
 
@@ -92,6 +121,9 @@ const colunas = {
   janelaAvisoDias: produtos.janelaAvisoDias,
   carenciaDias: produtos.carenciaDias,
   limiteAtivacoesPadrao: produtos.limiteAtivacoesPadrao,
+  cotaSubstituicoesQuantidade: produtos.cotaSubstituicoesQuantidade,
+  cotaSubstituicoesDias: produtos.cotaSubstituicoesDias,
+  contagemSubstituicoesZeradaEm: licencas.contagemSubstituicoesZeradaEm,
   clienteId: clientes.id,
   clienteNome: clientes.nome,
   clienteEmail: clientes.email,
@@ -116,6 +148,11 @@ function paraLicenca(linha: Linha, agora: Date): Licenca {
 }
 
 function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): EventoLicenca {
+  if (linha.tipo === "contagem_substituicoes_zerada") return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm };
+  if (linha.tipo === "ativacao_removida") {
+    const dados = linha.dados as { dispositivo: string; nomeDispositivo: string | null };
+    return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm, dispositivo: dados.dispositivo, nomeDispositivo: dados.nomeDispositivo };
+  }
   const dados = linha.dados as { validaAte: string | null; limiteAtivacoes: number | null };
   return {
     tipo: "emissao",
@@ -160,6 +197,27 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
 
     if (!produto || !cliente || Object.keys(erros).length > 0) throw new DadosDeLicencaInvalidos(erros);
     return { produtoId: produto.id, clienteId: cliente.id, validaAte, limiteAtivacoes: limite };
+  }
+
+  /**
+   * Roda uma ação do Administrador sobre a Licença do prefixo, com ela travada,
+   * como na Validação, e registra o evento no histórico na mesma transação.
+   */
+  async function agirNaLicenca(
+    prefixo: string,
+    acao: (tx: Transacao, licenca: { id: number }, agora: Date) => Promise<NovoEvento>,
+  ): Promise<void> {
+    const normalizado = normalizarChave(prefixo);
+    const agora = relogio.agora();
+    await banco.transaction(async (tx) => {
+      const [licenca] =
+        normalizado.length === TAMANHO_DO_PREFIXO
+          ? await tx.select({ id: licencas.id }).from(licencas).where(eq(licencas.prefixoChave, normalizado)).for("update")
+          : [];
+      if (!licenca) throw new LicencaNaoEncontrada();
+      const { tipo, ...dados } = await acao(tx, licenca, agora);
+      await tx.insert(eventosLicenca).values({ licencaId: licenca.id, tipo, dados, ocorridoEm: agora });
+    });
   }
 
   async function obterPorId(id: number, agora: Date): Promise<Licenca> {
@@ -220,6 +278,34 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
         .filter((licenca) => !filtro.aVencer || licenca.aVencer);
     },
 
+    /**
+     * Remove a Ativação do Dispositivo, liberando a vaga sem gastar a Cota de
+     * substituições. Lança LicencaNaoEncontrada para um prefixo sem Licença e
+     * AtivacaoNaoEncontrada se a Licença não tiver Ativação nesse Dispositivo.
+     */
+    async removerAtivacao(prefixo: string, dispositivo: string): Promise<void> {
+      await agirNaLicenca(prefixo, async (tx, licenca) => {
+        const [removida] = await tx
+          .delete(ativacoes)
+          .where(and(eq(ativacoes.licencaId, licenca.id), eq(ativacoes.dispositivo, dispositivo)))
+          .returning({ nomeDispositivo: ativacoes.nomeDispositivo });
+        if (!removida) throw new AtivacaoNaoEncontrada();
+        return { tipo: "ativacao_removida", dispositivo, nomeDispositivo: removida.nomeDispositivo };
+      });
+    },
+
+    /**
+     * Zera a contagem de Substituições de ativação: as feitas até agora deixam de
+     * contar para a Cota de substituições, mas continuam registradas. Lança
+     * LicencaNaoEncontrada para um prefixo sem Licença.
+     */
+    async zerarContagemDeSubstituicoes(prefixo: string): Promise<void> {
+      await agirNaLicenca(prefixo, async (tx, licenca, agora) => {
+        await tx.update(licencas).set({ contagemSubstituicoesZeradaEm: agora }).where(eq(licencas.id, licenca.id));
+        return { tipo: "contagem_substituicoes_zerada" };
+      });
+    },
+
     /** Detalhe da Licença pelo prefixo da Chave (com ou sem hífen), com o histórico e as Ativações em ordem. */
     async obterLicenca(prefixo: string): Promise<DetalheLicenca | null> {
       const normalizado = normalizarChave(prefixo);
@@ -241,10 +327,23 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
         .from(ativacoes)
         .where(eq(ativacoes.licencaId, linha.id))
         .orderBy(asc(ativacoes.ativadaEm), asc(ativacoes.id));
+      const substituicoes = await banco
+        .select({
+          dispositivoRemovido: substituicoesAtivacao.dispositivoRemovido,
+          dispositivoNovo: substituicoesAtivacao.dispositivoNovo,
+          feitaEm: substituicoesAtivacao.feitaEm,
+        })
+        .from(substituicoesAtivacao)
+        .where(eq(substituicoesAtivacao.licencaId, linha.id))
+        .orderBy(asc(substituicoesAtivacao.feitaEm), asc(substituicoesAtivacao.id));
+      const agora = relogio.agora();
       return {
-        ...paraLicenca(linha, relogio.agora()),
+        ...paraLicenca(linha, agora),
         historico: eventos.map(paraEvento),
         ativacoes: ativacoesDaLicenca,
+        substituicoes,
+        substituicoesNoPeriodo: await substituicoesNoPeriodo(banco, linha, linha, agora),
+        cotaSubstituicoes: { quantidade: linha.cotaSubstituicoesQuantidade, dias: linha.cotaSubstituicoesDias },
       };
     },
   };

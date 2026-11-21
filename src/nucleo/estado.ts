@@ -1,7 +1,8 @@
 // Regras de cálculo da Licença: estado e indicações, fim da Carência, fim da
-// Tolerância offline e Limite de ativações que vale. Tudo calculado, nunca
-// gravado, a partir dos dados da Licença, das regras atuais do Produto e do
-// momento atual. Os casos de uso chamam estas funções em vez de refazer a conta.
+// Tolerância offline, Limite de ativações que vale e janela da Cota de
+// substituições. Tudo calculado, nunca gravado, a partir dos dados da Licença,
+// das regras atuais do Produto e do momento atual. Os casos de uso chamam estas
+// funções em vez de refazer a conta.
 
 export const ESTADOS_LICENCA = ["Ativa", "Expirada", "Suspensa", "Revogada"] as const;
 export type EstadoLicenca = (typeof ESTADOS_LICENCA)[number];
@@ -59,4 +60,19 @@ export function limiteDeAtivacoes(
   regras: { limiteAtivacoesPadrao: number },
 ): number {
   return licenca.limiteAtivacoes ?? regras.limiteAtivacoesPadrao;
+}
+
+/**
+ * Início da janela móvel da Cota de substituições: contam as Substituições de
+ * ativação feitas depois deste instante, ou seja, nos últimos N dias do Produto
+ * e depois do último "zerar contagem" do Administrador.
+ */
+export function inicioDaJanelaDeSubstituicoes(
+  licenca: { contagemSubstituicoesZeradaEm: Date | null },
+  regras: { cotaSubstituicoesDias: number },
+  agora: Date,
+): Date {
+  const janela = agora.getTime() - regras.cotaSubstituicoesDias * UM_DIA_MS;
+  const zerada = licenca.contagemSubstituicoesZeradaEm?.getTime() ?? Number.NEGATIVE_INFINITY;
+  return new Date(Math.max(janela, zerada));
 }

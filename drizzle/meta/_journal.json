@@ -36,6 +36,13 @@
       "when": 1795229885729,
       "tag": "0004_ativacoes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795232129612,
+      "tag": "0005_substituicoes_ativacao",
+      "breakpoints": true
     }
   ]
 }

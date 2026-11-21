@@ -1,0 +1,635 @@
+{
+  "id": "fbaff780-6f90-4e54-b9a2-c0b97fbdab8b",
+  "prevId": "66e4f3e3-98f8-4aea-b805-bb9d727c7497",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.ativacoes": {
+      "name": "ativacoes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "ativacoes_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "licenca_id": {
+          "name": "licenca_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dispositivo": {
+          "name": "dispositivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome_dispositivo": {
+          "name": "nome_dispositivo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ativada_em": {
+          "name": "ativada_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ultima_validacao_em": {
+          "name": "ultima_validacao_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "ativacoes_licenca_dispositivo_unico": {
+          "name": "ativacoes_licenca_dispositivo_unico",
+          "columns": [
+            {
+              "expression": "licenca_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "dispositivo",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "ativacoes_licenca_id_licencas_id_fk": {
+          "name": "ativacoes_licenca_id_licencas_id_fk",
+          "tableFrom": "ativacoes",
+          "tableTo": "licencas",
+          "columnsFrom": [
+            "licenca_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.clientes": {
+      "name": "clientes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "clientes_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "criado_em": {
+          "name": "criado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "atualizado_em": {
+          "name": "atualizado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "clientes_email_unico": {
+          "name": "clientes_email_unico",
+          "columns": [
+            {
+              "expression": "lower(\"email\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.eventos_licenca": {
+      "name": "eventos_licenca",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "eventos_licenca_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "licenca_id": {
+          "name": "licenca_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dados": {
+          "name": "dados",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ocorrido_em": {
+          "name": "ocorrido_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "eventos_licenca_licenca": {
+          "name": "eventos_licenca_licenca",
+          "columns": [
+            {
+              "expression": "licenca_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "eventos_licenca_licenca_id_licencas_id_fk": {
+          "name": "eventos_licenca_licenca_id_licencas_id_fk",
+          "tableFrom": "eventos_licenca",
+          "tableTo": "licencas",
+          "columnsFrom": [
+            "licenca_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.licencas": {
+      "name": "licencas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "licencas_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "produto_id": {
+          "name": "produto_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cliente_id": {
+          "name": "cliente_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash_chave": {
+          "name": "hash_chave",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prefixo_chave": {
+          "name": "prefixo_chave",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "valida_ate": {
+          "name": "valida_ate",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "limite_ativacoes": {
+          "name": "limite_ativacoes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contagem_substituicoes_zerada_em": {
+          "name": "contagem_substituicoes_zerada_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emitida_em": {
+          "name": "emitida_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "licencas_hash_chave_unico": {
+          "name": "licencas_hash_chave_unico",
+          "columns": [
+            {
+              "expression": "hash_chave",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "licencas_prefixo_chave_unico": {
+          "name": "licencas_prefixo_chave_unico",
+          "columns": [
+            {
+              "expression": "prefixo_chave",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "licencas_produto": {
+          "name": "licencas_produto",
+          "columns": [
+            {
+              "expression": "produto_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "licencas_cliente": {
+          "name": "licencas_cliente",
+          "columns": [
+            {
+              "expression": "cliente_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "licencas_produto_id_produtos_id_fk": {
+          "name": "licencas_produto_id_produtos_id_fk",
+          "tableFrom": "licencas",
+          "tableTo": "produtos",
+          "columnsFrom": [
+            "produto_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "licencas_cliente_id_clientes_id_fk": {
+          "name": "licencas_cliente_id_clientes_id_fk",
+          "tableFrom": "licencas",
+          "tableTo": "clientes",
+          "columnsFrom": [
+            "cliente_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.produtos": {
+      "name": "produtos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "produtos_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "identificador": {
+          "name": "identificador",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nome": {
+          "name": "nome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descricao": {
+          "name": "descricao",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "janela_aviso_dias": {
+          "name": "janela_aviso_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "carencia_dias": {
+          "name": "carencia_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "limite_ativacoes_padrao": {
+          "name": "limite_ativacoes_padrao",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cota_substituicoes_quantidade": {
+          "name": "cota_substituicoes_quantidade",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cota_substituicoes_dias": {
+          "name": "cota_substituicoes_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tolerancia_offline_dias": {
+          "name": "tolerancia_offline_dias",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave_publica": {
+          "name": "chave_publica",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chave_privada_cifrada": {
+          "name": "chave_privada_cifrada",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cadastrado_em": {
+          "name": "cadastrado_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "produtos_identificador_unique": {
+          "name": "produtos_identificador_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "identificador"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.substituicoes_ativacao": {
+      "name": "substituicoes_ativacao",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "substituicoes_ativacao_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "licenca_id": {
+          "name": "licenca_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dispositivo_removido": {
+          "name": "dispositivo_removido",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dispositivo_novo": {
+          "name": "dispositivo_novo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "feita_em": {
+          "name": "feita_em",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "substituicoes_ativacao_licenca_feita_em": {
+          "name": "substituicoes_ativacao_licenca_feita_em",
+          "columns": [
+            {
+              "expression": "licenca_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "feita_em",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "substituicoes_ativacao_licenca_id_licencas_id_fk": {
+          "name": "substituicoes_ativacao_licenca_id_licencas_id_fk",
+          "tableFrom": "substituicoes_ativacao",
+          "tableTo": "licencas",
+          "columnsFrom": [
+            "licenca_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

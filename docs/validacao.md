@@ -64,6 +64,15 @@ Datas em ISO 8601, em UTC (`2026-01-08T12:00:00.000Z`). Campos novos podem ser a
 
 A recusa `chave_invalida` é a mesma para Chave inexistente e para Chave de outro Produto, para que ninguém descubra nada pela resposta. Recusas por estado (`licenca_*`) não criam nem atualizam Ativações.
 
+### Ativações e Substituição de ativação
+
+- Uma Validação aceita num Dispositivo que já tem Ativação só atualiza a data da última Validação dela.
+- Num Dispositivo novo, a Instância cria uma Ativação se ainda houver vaga no Limite de ativações da Licença.
+- Sem vaga, a Instância faz a **Substituição de ativação**: remove a Ativação que está há mais tempo sem Validação e ativa o Dispositivo novo, desde que a Licença ainda tenha Cota de substituições. A Cota conta as Substituições de ativação feitas nos últimos N dias (quantidade e N definidos no Produto), e o Administrador pode zerar essa contagem. A resposta é uma aceitação comum: nada nela indica que houve substituição.
+- Sem vaga e sem Cota, a resposta é a recusa `limite_de_ativacoes_atingido`. Mostre ao Cliente que ele precisa falar com o Administrador, que pode remover uma Ativação ou zerar a contagem.
+
+O Dispositivo que perdeu a Ativação não é avisado. Ele continua com a última aceitação guardada até o `validaAte` dela. Na Validação seguinte, ele conta como Dispositivo novo e pode, por sua vez, substituir outra Ativação e gastar a Cota.
+
 Exemplo de carga aceita:
 
 ```json

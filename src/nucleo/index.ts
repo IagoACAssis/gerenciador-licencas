@@ -23,8 +23,10 @@ export {
 } from "./clientes.ts";
 
 export {
+  AtivacaoNaoEncontrada,
   DadosDeLicencaInvalidos,
   ESTADOS_LICENCA,
+  LicencaNaoEncontrada,
   type CampoLicenca,
   type DadosEmissao,
   type Ativacao,
@@ -33,6 +35,7 @@ export {
   type EventoLicenca,
   type FiltroLicencas,
   type Licenca,
+  type SubstituicaoAtivacao,
 } from "./licencas.ts";
 
 export {
@@ -59,6 +62,9 @@ export interface DependenciasNucleo {
   /** Segredo da configuração da Instância que cifra as chaves privadas dos Produtos. */
   segredoChaves: string;
 }
+
+/** Transação do banco, como os casos de uso a recebem de `banco.transaction`. */
+export type Transacao = Parameters<Parameters<Banco["transaction"]>[0]>[0];
 
 /**
  * Núcleo de licenciamento: concentra todas as regras do domínio. Rotas da API e

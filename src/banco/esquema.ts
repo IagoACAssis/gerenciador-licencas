@@ -51,6 +51,8 @@ export const licencas = pgTable(
     validaAte: timestamp("valida_ate", { withTimezone: true }),
     /** Vazio = segue o Limite de ativações padrão atual do Produto. */
     limiteAtivacoes: integer("limite_ativacoes"),
+    /** Último "zerar contagem" do Administrador: só contam para a Cota as Substituições de ativação depois dele. */
+    contagemSubstituicoesZeradaEm: timestamp("contagem_substituicoes_zerada_em", { withTimezone: true }),
     emitidaEm: timestamp("emitida_em", { withTimezone: true }).notNull(),
   },
   (tabela) => [
@@ -88,4 +90,17 @@ export const ativacoes = pgTable(
     ultimaValidacaoEm: timestamp("ultima_validacao_em", { withTimezone: true }).notNull(),
   },
   (tabela) => [uniqueIndex("ativacoes_licenca_dispositivo_unico").on(tabela.licencaId, tabela.dispositivo)],
+);
+
+/** Registro de cada Substituição de ativação. É a partir dele que se conta a Cota de substituições. */
+export const substituicoesAtivacao = pgTable(
+  "substituicoes_ativacao",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    licencaId: integer("licenca_id").notNull().references(() => licencas.id),
+    dispositivoRemovido: text("dispositivo_removido").notNull(),
+    dispositivoNovo: text("dispositivo_novo").notNull(),
+    feitaEm: timestamp("feita_em", { withTimezone: true }).notNull(),
+  },
+  (tabela) => [index("substituicoes_ativacao_licenca_feita_em").on(tabela.licencaId, tabela.feitaEm)],
 );
