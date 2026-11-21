@@ -9,7 +9,7 @@ import { BotaoCopiar } from "@/componentes/botao-copiar";
 import { CLASSE_AJUDA, CLASSE_CAMPO, CLASSE_ROTULO } from "@/componentes/campos";
 import { DialogoDeConfirmacao } from "@/componentes/dialogo-de-confirmacao";
 import { SeloDeEstado } from "@/componentes/selo-de-estado";
-import { descreverPrazo, formatarData, formatarDataHora, haQuantoTempo } from "../../formatacao";
+import { descreverPrazo, formatarData, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
 import {
   alterarLimiteDeAtivacoes,
   reativarLicenca,
@@ -19,9 +19,9 @@ import {
   suspenderLicenca,
   zerarContagemDeSubstituicoes,
 } from "../acoes";
-import { detalheDoEvento, nomeDoEvento } from "../eventos";
+import { descreverEvento } from "../eventos";
 import { excluirLicenca } from "../../excluidos/acoes";
-import { AreaDaTrocaDeChave, BotaoTrocarChave } from "./formulario-troca-de-chave";
+import { AreaDaTrocaDeChave, BotaoTrocarChave } from "./troca-de-chave";
 
 export const dynamic = "force-dynamic";
 
@@ -211,7 +211,7 @@ function FaixaDeFatos({ licenca, agora }: { licenca: DetalheLicenca; agora: Date
     },
     {
       rotulo: "Data de validade",
-      valor: licenca.validaAte ? formatarData(licenca.validaAte) : "Perpétua",
+      valor: formatarValidade(licenca.validaAte),
       detalhe: licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "sem data de validade",
     },
     {
@@ -378,15 +378,14 @@ function Historico({ licenca, agora }: { licenca: DetalheLicenca; agora: Date })
   // O núcleo devolve do mais antigo para o mais novo.
   const eventos = [...licenca.historico].reverse();
   return (
-    <ol className="relative grid max-w-2xl">
-      <span className="absolute top-3 bottom-3 left-[4px] w-px bg-borda" aria-hidden="true" />
+    <ol className="relative grid max-w-2xl before:absolute before:top-3 before:bottom-3 before:left-[4px] before:w-px before:bg-borda">
       {eventos.map((evento, i) => {
-        const detalhe = detalheDoEvento(evento);
+        const { nome, detalhe } = descreverEvento(evento);
         return (
           <li key={i} className="flex gap-4 py-2.5">
             <span className="relative mt-1.5 size-2.5 shrink-0 rounded-full bg-acento ring-4 ring-fundo" aria-hidden="true" />
             <div className="text-sm">
-              <span className="font-medium">{nomeDoEvento(evento)}</span>
+              <span className="font-medium">{nome}</span>
               {detalhe && <span className="text-suave">: {detalhe}</span>}
               <span className="block text-xs text-suave">
                 <Quando data={evento.ocorridoEm} agora={agora} /> · {formatarDataHora(evento.ocorridoEm)}

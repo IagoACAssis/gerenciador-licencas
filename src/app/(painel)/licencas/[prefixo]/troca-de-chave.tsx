@@ -1,7 +1,5 @@
 "use client";
-import Link from "next/link";
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { classeBotao } from "@/componentes/botoes";
 import { DestaqueDaChaveNova } from "@/componentes/chave-nova";
 import { DialogoDeConfirmacao, type EstadoDoDialogo } from "@/componentes/dialogo-de-confirmacao";
 import { trocarChave } from "../acoes";
@@ -21,13 +19,7 @@ const MostrarChaveNova = createContext<((trocada: ChaveTrocada) => void) | null>
 export function AreaDaTrocaDeChave({ children }: { children: ReactNode }) {
   const [trocada, setTrocada] = useState<ChaveTrocada | null>(null);
   if (trocada) {
-    return (
-      <DestaqueDaChaveNova titulo="Chave trocada" chave={trocada.chave}>
-        <Link href={`/licencas/${trocada.prefixo}`} className={classeBotao("secundario")}>
-          Ver a Licença {trocada.prefixo}…
-        </Link>
-      </DestaqueDaChaveNova>
-    );
+    return <DestaqueDaChaveNova titulo="Chave trocada" {...trocada} />;
   }
   return <MostrarChaveNova value={setTrocada}>{children}</MostrarChaveNova>;
 }
@@ -36,14 +28,13 @@ export function AreaDaTrocaDeChave({ children }: { children: ReactNode }) {
 export function BotaoTrocarChave({ prefixo }: { prefixo: string }) {
   const mostrarChaveNova = useContext(MostrarChaveNova);
   if (!mostrarChaveNova) throw new Error("BotaoTrocarChave precisa estar dentro de AreaDaTrocaDeChave.");
-  const mostrar = mostrarChaveNova;
 
-  async function trocar(_estado: EstadoDoDialogo, formulario: FormData): Promise<EstadoDoDialogo> {
+  const trocar = async (_estado: EstadoDoDialogo, formulario: FormData): Promise<EstadoDoDialogo> => {
     const { erro, trocada } = await trocarChave({}, formulario);
     if (!trocada) return { erro };
-    mostrar(trocada);
+    mostrarChaveNova(trocada);
     return { aviso: "Chave trocada. A anterior deixou de valer." };
-  }
+  };
 
   return (
     <DialogoDeConfirmacao

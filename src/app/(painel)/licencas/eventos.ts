@@ -5,44 +5,38 @@ function descreverLimite(limite: number | null): string {
   return limite === null ? "padrão do Produto" : String(limite);
 }
 
-/** O tipo do evento do histórico, como o painel o nomeia ("Renovação", "Troca de chave"). */
-export function nomeDoEvento(evento: EventoLicenca): string {
-  switch (evento.tipo) {
-    case "emissao": return "Emissão";
-    case "renovacao": return "Renovação";
-    case "limite_alterado": return "Limite de ativações alterado";
-    case "suspensao": return "Suspensão";
-    case "reativacao": return "Reativação";
-    case "revogacao": return "Revogação";
-    case "exclusao": return "Exclusão";
-    case "restauracao": return "Restauração";
-    case "troca_de_chave": return "Troca de chave";
-    case "ativacao_removida": return "Ativação removida pelo Administrador";
-    case "contagem_substituicoes_zerada": return "Contagem de Substituições de ativação zerada";
-  }
-}
-
-/** O que mudou no evento, quando há o que dizer: "de 01/05/2026 para 01/05/2027". */
-export function detalheDoEvento(evento: EventoLicenca): string | null {
+/**
+ * Um evento do histórico como o painel o mostra: o tipo ("Renovação") e, quando há o
+ * que dizer, o que mudou ("de 01/05/2026 para 01/05/2027").
+ */
+export function descreverEvento(evento: EventoLicenca): { nome: string; detalhe: string | null } {
   switch (evento.tipo) {
     case "emissao": {
       const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
-      return `${validade}, Limite de ativações ${descreverLimite(evento.limiteAtivacoes)}`;
+      return { nome: "Emissão", detalhe: `${validade}, Limite de ativações ${descreverLimite(evento.limiteAtivacoes)}` };
     }
     case "renovacao":
-      return `de ${formatarData(evento.validaAteAnterior)} para ${formatarData(evento.validaAte)}`;
+      return {
+        nome: "Renovação",
+        detalhe: `de ${formatarData(evento.validaAteAnterior)} para ${formatarData(evento.validaAte)}`,
+      };
     case "limite_alterado":
-      return `de ${descreverLimite(evento.limiteAnterior)} para ${descreverLimite(evento.limiteAtivacoes)}`;
+      return {
+        nome: "Limite de ativações alterado",
+        detalhe: `de ${descreverLimite(evento.limiteAnterior)} para ${descreverLimite(evento.limiteAtivacoes)}`,
+      };
     case "troca_de_chave":
-      return `a Chave que começava com ${evento.prefixoAnterior} deixou de valer`;
+      return { nome: "Troca de chave", detalhe: `a Chave que começava com ${evento.prefixoAnterior} deixou de valer` };
     case "ativacao_removida":
-      return evento.nomeDispositivo ? `${evento.dispositivo} (${evento.nomeDispositivo})` : evento.dispositivo;
-    case "suspensao":
-    case "reativacao":
-    case "revogacao":
-    case "exclusao":
-    case "restauracao":
-    case "contagem_substituicoes_zerada":
-      return null;
+      return {
+        nome: "Ativação removida pelo Administrador",
+        detalhe: evento.nomeDispositivo ? `${evento.dispositivo} (${evento.nomeDispositivo})` : evento.dispositivo,
+      };
+    case "suspensao": return { nome: "Suspensão", detalhe: null };
+    case "reativacao": return { nome: "Reativação", detalhe: null };
+    case "revogacao": return { nome: "Revogação", detalhe: null };
+    case "exclusao": return { nome: "Exclusão", detalhe: null };
+    case "restauracao": return { nome: "Restauração", detalhe: null };
+    case "contagem_substituicoes_zerada": return { nome: "Contagem de Substituições de ativação zerada", detalhe: null };
   }
 }

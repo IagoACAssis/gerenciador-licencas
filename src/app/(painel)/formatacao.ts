@@ -1,8 +1,15 @@
+import { UM_DIA_MS } from "@/nucleo/estado";
+
 // As datas de validade valem até o fim do dia em UTC, e o painel as mostra em UTC
 // para que o dia exibido seja sempre o dia escolhido na emissão.
 
 export function formatarData(data: Date): string {
   return data.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+}
+
+/** A data de validade, ou "Perpétua" para a Licença sem data de validade. */
+export function formatarValidade(validaAte: Date | null): string {
+  return validaAte ? formatarData(validaAte) : "Perpétua";
 }
 
 export function formatarDataHora(data: Date): string {
@@ -19,7 +26,6 @@ export function parametro(valor: string | string[] | undefined): string {
   return (Array.isArray(valor) ? valor[0] : valor) ?? "";
 }
 
-const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
 /** Quantos dias de calendário, em UTC como as datas do painel, vão de `de` até `ate` (negativo se `ate` já passou). */
 function diasDeCalendario(de: Date, ate: Date): number {

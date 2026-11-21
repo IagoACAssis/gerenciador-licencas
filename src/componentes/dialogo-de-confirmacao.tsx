@@ -70,7 +70,8 @@ export function DialogoDeConfirmacao({
         aria-describedby={`${ids}-descricao`}
         className="m-auto w-[min(92vw,28rem)] rounded-2xl bg-superficie p-0 text-tinta shadow-2xl ring-1 ring-borda"
         onClose={() => setAbertura((n) => n + 1)}
-        // Enquanto a ação roda, o diálogo não fecha: o resultado precisa de onde aparecer.
+        // Enquanto a ação roda, o diálogo evita fechar, para a recusa ter onde aparecer. O navegador
+        // pode forçar o fechamento num segundo Esc; aí o aviso do sucesso ainda aparece.
         onCancel={(evento) => enviando.current && evento.preventDefault()}
         // Fora do conteúdo, o clique cai no próprio <dialog> (o fundo).
         onPointerDown={(evento) => (cliqueComecouFora.current = evento.target === evento.currentTarget)}

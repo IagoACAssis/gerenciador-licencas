@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Licenca } from "@/nucleo";
 import { SeloDeEstado } from "@/componentes/selo-de-estado";
-import { formatarData } from "../formatacao";
+import { formatarValidade } from "../formatacao";
 
 export function TabelaLicencas({ licencas, semCliente = false }: { licencas: Licenca[]; semCliente?: boolean }) {
   return (
@@ -21,7 +21,7 @@ export function TabelaLicencas({ licencas, semCliente = false }: { licencas: Lic
             <td><Link href={`/licencas/${licenca.prefixo}`}><code>{licenca.prefixo}…</code></Link></td>
             <td>{licenca.produto.nome}</td>
             {!semCliente && <td><Link href={`/clientes/${licenca.cliente.id}`}>{licenca.cliente.nome}</Link></td>}
-            <td>{licenca.validaAte ? formatarData(licenca.validaAte) : "Perpétua"}</td>
+            <td>{formatarValidade(licenca.validaAte)}</td>
             <td><SeloDeEstado licenca={licenca} /></td>
           </tr>
         ))}

@@ -15,7 +15,7 @@ export interface SituacaoLicenca {
   emCarencia: boolean;
 }
 
-const UM_DIA_MS = 24 * 60 * 60 * 1000;
+export const UM_DIA_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Prioridade: Revogada > Suspensa > Expirada > Ativa. Licença perpétua (sem

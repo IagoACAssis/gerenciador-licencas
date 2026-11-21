@@ -1,14 +1,15 @@
 "use client";
-import { useEffect, useRef, type ReactNode } from "react";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { BotaoCopiar } from "./botao-copiar";
+import { classeBotao } from "./botoes";
 
 /**
  * Destaque da Chave de licença na única vez em que ela sai do núcleo (ADR-0003): na
  * Emissão e na Troca de chave. Ela chega só na resposta da ação, nunca pela URL.
  * Ao aparecer, recebe o foco, porque substitui o formulário ou o diálogo que o tinha.
- * `children` leva os próximos passos, como o link para a Licença.
  */
-export function DestaqueDaChaveNova({ titulo, chave, children }: { titulo: string; chave: string; children?: ReactNode }) {
+export function DestaqueDaChaveNova({ titulo, chave, prefixo }: { titulo: string; chave: string; prefixo: string }) {
   const cabecalho = useRef<HTMLHeadingElement>(null);
   useEffect(() => cabecalho.current?.focus(), []);
   return (
@@ -24,7 +25,9 @@ export function DestaqueDaChaveNova({ titulo, chave, children }: { titulo: strin
       </code>
       <div className="flex flex-wrap items-center gap-3">
         <BotaoCopiar texto={chave} rotulo="Copiar Chave de licença" estilo="primario" />
-        {children}
+        <Link href={`/licencas/${prefixo}`} className={classeBotao("secundario")}>
+          Ver a Licença {prefixo}…
+        </Link>
       </div>
     </section>
   );
