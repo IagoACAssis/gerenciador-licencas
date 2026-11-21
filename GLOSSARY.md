@@ -28,12 +28,20 @@ _Evite_: assinatura, plano, acesso
 Licença sem data de validade.
 
 **Renovação**:
-Extensão da data de validade de uma Licença existente. A Chave de licença e as Ativações continuam as mesmas.
+Extensão da data de validade de uma Licença existente, inclusive de uma Licença Expirada. A Chave de licença e as Ativações continuam as mesmas, e cada Renovação fica registrada no histórico da Licença.
 _Evite_: recompra, nova licença
 
 **Chave de licença**:
-Segredo que identifica uma Licença e que o Administrador entrega ao Cliente.
+Segredo que identifica uma Licença e que o Administrador entrega ao Cliente. Aparece uma única vez, na emissão; depois disso nem a Instância consegue mostrá-la de novo.
 _Evite_: token, serial, código
+
+**Troca de chave**:
+Geração de uma Chave de licença nova para uma Licença existente, feita pelo Administrador quando o Cliente perde a Chave. A antiga deixa de valer na hora; as Ativações, a data de validade e o histórico continuam os mesmos.
+_Evite_: reemissão, nova licença
+
+**Exclusão**:
+Retirada de um Produto, Cliente ou Licença criado por engano das listas do painel, sem apagar o registro. O que foi excluído deixa de funcionar, mas continua guardado para o histórico e pode ser restaurado.
+_Evite_: remoção, apagar (para se referir a encerrar uma Licença, ver Revogada)
 
 **Janela de aviso**:
 Quantos dias antes da data de validade a Licença passa a ser informada como "a vencer". Definida por Produto.
@@ -65,14 +73,14 @@ Troca, feita a partir de um Dispositivo novo, de uma Ativação existente por um
 _Evite_: transferência, desativação
 
 **Cota de substituições**:
-Quantas Substituições de ativação uma Licença pode fazer por período sem intervenção do Administrador. Definida por Produto.
+Quantas Substituições de ativação uma Licença pode fazer nos últimos N dias sem intervenção do Administrador. A quantidade e o N são definidos por Produto.
 
 **Resposta assinada**:
-Resultado de uma Validação assinado pela Instância. O Produto consegue conferir que ele é autêntico sem precisar de rede.
+Resultado de uma Validação, aceita ou recusada, assinado pela Instância. O Produto consegue conferir que ele é autêntico sem precisar de rede.
 _Evite_: token, certificado
 
 **Tolerância offline**:
-Por quanto tempo uma Resposta assinada continua valendo sem uma nova Validação. Definida por Produto.
+Por quanto tempo uma Resposta assinada continua valendo sem uma nova Validação, nunca além da data de validade mais a Carência. Definida por Produto.
 
 ### Estados da Licença
 
@@ -84,7 +92,7 @@ Licença cuja data de validade já passou. Decorre da data, ninguém marca à m�
 _Evite_: vencida
 
 **Suspensa**:
-Licença pausada pelo Administrador, que pode reativá-la.
+Licença pausada pelo Administrador, que pode reativá-la. As Ativações são mantidas e voltam a valer na reativação.
 _Evite_: bloqueada, pausada
 
 **Revogada**:
