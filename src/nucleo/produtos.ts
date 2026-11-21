@@ -1,8 +1,8 @@
-import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { clientes, licencas, produtos } from "../banco/esquema.ts";
 import { MAIOR_INTEIRO } from "../banco/postgres.ts";
 import { cifrarChavePrivada, gerarParDeChaves } from "./chaves.ts";
-import { licencaEmUso, recusarSeHaLicencaEmVigor } from "./exclusao.ts";
+import { licencaEmUso, produtoNaoExcluido as naoExcluido, recusarSeHaLicencaEmVigor } from "./exclusao.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
 export interface RegrasProduto {
@@ -105,8 +105,6 @@ type LinhaPublica = { [K in keyof typeof colunasPublicas]: (typeof colunasPublic
 
 const colunasComId = { id: produtos.id, ...colunasPublicas };
 
-const naoExcluido = isNull(produtos.excluidoEm);
-
 function paraProduto(linha: LinhaPublica & { licencas: number }): Produto {
   return {
     identificador: linha.identificador,
@@ -207,12 +205,7 @@ export function casosDeUsoDeProdutos({ banco, relogio, aleatoriedade, segredoCha
           .where(and(eq(produtos.identificador, identificador), naoExcluido))
           .for("update");
         if (!produto) throw new ProdutoNaoEncontrado();
-        await recusarSeHaLicencaEmVigor(
-          tx,
-          eq(licencas.produtoId, produto.id),
-          "O Produto tem Licença Ativa ou Suspensa: revogue-a ou exclua-a antes.",
-          agora,
-        );
+        await recusarSeHaLicencaEmVigor(tx, { produtoId: produto.id }, agora);
         await tx.update(produtos).set({ excluidoEm: agora }).where(eq(produtos.id, produto.id));
       });
     },

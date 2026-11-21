@@ -1,11 +1,11 @@
-import { and, asc, desc, eq, isNotNull, isNull, like, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, like, type SQL } from "drizzle-orm";
 import { ativacoes, clientes, eventosLicenca, licencas, produtos, substituicoesAtivacao } from "../banco/esquema.ts";
 import { idValido, MAIOR_INTEIRO, violouUnicidade } from "../banco/postgres.ts";
 import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, lerPrefixo, normalizarChave } from "./chave-licenca.ts";
 import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
 import type { Transacao } from "../banco/conexao.ts";
 import type { DependenciasNucleo } from "./index.ts";
-import { estaEmUso, ExclusaoNaoPermitida, licencaEmUso } from "./exclusao.ts";
+import { clienteNaoExcluido, estaEmUso, licencaEmUso, produtoNaoExcluido, recusarSeDonoExcluido } from "./exclusao.ts";
 import { substituicoesNoPeriodo } from "./substituicoes.ts";
 
 export { ESTADOS_LICENCA, type EstadoLicenca } from "./estado.ts";
@@ -223,6 +223,7 @@ const colunasTravadas = {
   id: licencas.id,
   produtoId: licencas.produtoId,
   clienteId: licencas.clienteId,
+  excluidaEm: licencas.excluidaEm,
   validaAte: licencas.validaAte,
   limiteAtivacoes: licencas.limiteAtivacoes,
   suspensaEm: licencas.suspensaEm,
@@ -256,7 +257,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
     const [produto] = await tx
       .select({ id: produtos.id })
       .from(produtos)
-      .where(and(eq(produtos.identificador, dados.produto), isNull(produtos.excluidoEm)))
+      .where(and(eq(produtos.identificador, dados.produto), produtoNaoExcluido))
       .for("share");
     if (!produto) erros.produto = "Escolha um Produto cadastrado.";
 
@@ -266,7 +267,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
         ? await tx
             .select({ id: clientes.id })
             .from(clientes)
-            .where(and(eq(clientes.id, idCliente), isNull(clientes.excluidoEm)))
+            .where(and(eq(clientes.id, idCliente), clienteNaoExcluido))
             .for("share")
         : [];
     if (!cliente) erros.cliente = "Escolha um Cliente cadastrado.";
@@ -285,13 +286,14 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
 
   /**
    * Roda uma ação do Administrador sobre a Licença do prefixo, com ela travada,
-   * como na Validação, e registra o evento no histórico na mesma transação. Por
-   * padrão só alcança Licença em uso; `{ excluida: true }` alcança só Licença excluída.
+   * como na Validação, e registra o evento no histórico na mesma transação.
+   * `alcance` diz qual Licença a ação encontra: só a em uso (o normal) ou só a
+   * excluída (para a restauração); qualquer outra conta como LicencaNaoEncontrada.
    */
   async function emTransacaoNaLicenca(
     prefixo: string,
     acao: (tx: Transacao, licenca: LicencaTravada, agora: Date) => Promise<NovoEvento>,
-    { excluida = false } = {},
+    alcance: "em uso" | "excluida" = "em uso",
   ): Promise<void> {
     const normalizado = lerPrefixo(prefixo);
     const agora = relogio.agora();
@@ -301,11 +303,13 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
           ? await tx
               .select(colunasTravadas)
               .from(licencas)
-              .where(and(eq(licencas.prefixoChave, normalizado), (excluida ? isNotNull : isNull)(licencas.excluidaEm)))
+              .where(eq(licencas.prefixoChave, normalizado))
               .for("update")
           : [];
-      // Conferido depois da trava: uma Exclusão do Produto ou do Cliente que acabou de terminar já aparece.
-      if (!licenca || (!excluida && !(await estaEmUso(tx, licenca.id)))) throw new LicencaNaoEncontrada();
+      // "Em uso" é conferido depois da trava: uma Exclusão do Produto ou do Cliente que acabou de terminar já aparece.
+      const encontrada =
+        !!licenca && (alcance === "excluida" ? licenca.excluidaEm !== null : await estaEmUso(tx, licenca.id));
+      if (!encontrada) throw new LicencaNaoEncontrada();
       const { tipo, ...dados } = await acao(tx, licenca, agora);
       await tx.insert(eventosLicenca).values({ licencaId: licenca.id, tipo, dados, ocorridoEm: agora });
     });
@@ -493,23 +497,11 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       await emTransacaoNaLicenca(
         prefixo,
         async (tx, licenca) => {
-          // Travados (FOR SHARE) para que a Exclusão do dono espere esta restauração e a leve em conta.
-          const [produto] = await tx
-            .select({ excluidoEm: produtos.excluidoEm })
-            .from(produtos)
-            .where(eq(produtos.id, licenca.produtoId))
-            .for("share");
-          const [cliente] = await tx
-            .select({ excluidoEm: clientes.excluidoEm })
-            .from(clientes)
-            .where(eq(clientes.id, licenca.clienteId))
-            .for("share");
-          if (produto!.excluidoEm) throw new ExclusaoNaoPermitida("O Produto desta Licença está excluído: restaure-o antes.");
-          if (cliente!.excluidoEm) throw new ExclusaoNaoPermitida("O Cliente desta Licença está excluído: restaure-o antes.");
+          await recusarSeDonoExcluido(tx, licenca);
           await tx.update(licencas).set({ excluidaEm: null }).where(eq(licencas.id, licenca.id));
           return { tipo: "restauracao" };
         },
-        { excluida: true },
+        "excluida",
       );
     },
 

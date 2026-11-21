@@ -9,8 +9,14 @@ import { emGrupos } from "./chave-licenca.ts";
 import { calcularSituacao, type EstadoLicenca } from "./estado.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
+/** Produto que não foi excluído: o único que aparece nas listas e consultas e que valida. */
+export const produtoNaoExcluido = isNull(produtos.excluidoEm);
+
+/** Cliente que não foi excluído: o único que aparece nas listas e consultas e que recebe Licenças. */
+export const clienteNaoExcluido = isNull(clientes.excluidoEm);
+
 /** Condição de Licença em uso, para consultas que juntam a Licença ao Produto e ao Cliente dela. */
-export const licencaEmUso: SQL = and(isNull(licencas.excluidaEm), isNull(produtos.excluidoEm), isNull(clientes.excluidoEm))!;
+export const licencaEmUso: SQL = and(isNull(licencas.excluidaEm), produtoNaoExcluido, clienteNaoExcluido)!;
 
 /** Com a Licença já travada: ela está em uso? Lida depois da trava para ver Exclusões que acabaram de terminar. */
 export async function estaEmUso(tx: Transacao, idLicenca: number): Promise<boolean> {
@@ -35,11 +41,17 @@ export class ExclusaoNaoPermitida extends Error {
 }
 
 /**
- * Recusa a Exclusão se alguma Licença em uso do Produto ou do Cliente (`dono`)
- * estiver Ativa ou Suspensa. Trava essas Licenças, para que uma Renovação ou
- * reativação simultânea espere a Exclusão terminar e então a encontre.
+ * Recusa a Exclusão se alguma Licença em uso do Produto ou do Cliente estiver
+ * Ativa ou Suspensa. Trava essas Licenças, para que uma Renovação ou reativação
+ * simultânea espere a Exclusão terminar e então a encontre.
  */
-export async function recusarSeHaLicencaEmVigor(tx: Transacao, dono: SQL, mensagem: string, agora: Date): Promise<void> {
+export async function recusarSeHaLicencaEmVigor(
+  tx: Transacao,
+  dono: { produtoId: number } | { clienteId: number },
+  agora: Date,
+): Promise<void> {
+  const [condicao, nome] =
+    "produtoId" in dono ? [eq(licencas.produtoId, dono.produtoId), "Produto"] : [eq(licencas.clienteId, dono.clienteId), "Cliente"];
   const linhas = await tx
     .select({
       validaAte: licencas.validaAte,
@@ -51,10 +63,30 @@ export async function recusarSeHaLicencaEmVigor(tx: Transacao, dono: SQL, mensag
     .from(licencas)
     .innerJoin(produtos, eq(licencas.produtoId, produtos.id))
     .innerJoin(clientes, eq(licencas.clienteId, clientes.id))
-    .where(and(dono, licencaEmUso))
+    .where(and(condicao, licencaEmUso))
     .for("update", { of: licencas });
   const emVigor = linhas.some((linha) => ESTADOS_QUE_IMPEDEM_EXCLUSAO.includes(calcularSituacao(linha, linha, agora).estado));
-  if (emVigor) throw new ExclusaoNaoPermitida(mensagem);
+  if (emVigor) throw new ExclusaoNaoPermitida(`O ${nome} tem Licença Ativa ou Suspensa: revogue-a ou exclua-a antes.`);
+}
+
+/**
+ * Para restaurar uma Licença excluída: recusa se o Produto ou o Cliente dela estiver
+ * excluído. Trava os dois (FOR SHARE), para que a Exclusão de um deles espere esta
+ * restauração e então leve a Licença em conta.
+ */
+export async function recusarSeDonoExcluido(tx: Transacao, licenca: { produtoId: number; clienteId: number }): Promise<void> {
+  const [produto] = await tx
+    .select({ id: produtos.id })
+    .from(produtos)
+    .where(and(eq(produtos.id, licenca.produtoId), produtoNaoExcluido))
+    .for("share");
+  if (!produto) throw new ExclusaoNaoPermitida("O Produto desta Licença está excluído: restaure-o antes.");
+  const [cliente] = await tx
+    .select({ id: clientes.id })
+    .from(clientes)
+    .where(and(eq(clientes.id, licenca.clienteId), clienteNaoExcluido))
+    .for("share");
+  if (!cliente) throw new ExclusaoNaoPermitida("O Cliente desta Licença está excluído: restaure-o antes.");
 }
 
 /** O que está na lista de excluídos, do excluído mais recente para o mais antigo. */

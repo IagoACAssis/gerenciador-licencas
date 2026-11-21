@@ -1,9 +1,9 @@
 import { sign } from "node:crypto";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { ativacoes, licencas, produtos, substituicoesAtivacao } from "../banco/esquema.ts";
 import { emGrupos, hashDaChave } from "./chave-licenca.ts";
 import { decifrarChavePrivada } from "./chaves.ts";
-import { estaEmUso } from "./exclusao.ts";
+import { estaEmUso, produtoNaoExcluido } from "./exclusao.ts";
 import {
   calcularSituacao,
   fimDaToleranciaOffline,
@@ -178,7 +178,7 @@ export function casosDeUsoDeValidacao({ banco, relogio, segredoChaves }: Depende
       const [produto] = await banco
         .select()
         .from(produtos)
-        .where(and(eq(produtos.identificador, pedido.produto), isNull(produtos.excluidoEm)));
+        .where(and(eq(produtos.identificador, pedido.produto), produtoNaoExcluido));
       if (!produto) throw new ProdutoNaoEncontrado();
 
       const carga = await banco.transaction(async (tx) => {

@@ -1,7 +1,7 @@
-import { and, asc, eq, ilike, isNotNull, isNull, or } from "drizzle-orm";
-import { clientes, licencas } from "../banco/esquema.ts";
+import { and, asc, eq, ilike, isNotNull, or } from "drizzle-orm";
+import { clientes } from "../banco/esquema.ts";
 import { idValido, violouUnicidade } from "../banco/postgres.ts";
-import { recusarSeHaLicencaEmVigor } from "./exclusao.ts";
+import { clienteNaoExcluido as naoExcluido, recusarSeHaLicencaEmVigor } from "./exclusao.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
 export interface Cliente {
@@ -65,8 +65,6 @@ const colunas = {
   criadoEm: clientes.criadoEm,
   atualizadoEm: clientes.atualizadoEm,
 };
-
-const naoExcluido = isNull(clientes.excluidoEm);
 
 /** `%`, `_` e `\` têm significado no ILIKE; escapados, a busca os trata como texto comum. */
 function padraoDeTrecho(trecho: string): string {
@@ -154,12 +152,7 @@ export function casosDeUsoDeClientes({ banco, relogio }: DependenciasNucleo) {
           .where(and(eq(clientes.id, id), naoExcluido))
           .for("update");
         if (!cliente) throw new ClienteNaoEncontrado(id);
-        await recusarSeHaLicencaEmVigor(
-          tx,
-          eq(licencas.clienteId, id),
-          "O Cliente tem Licença Ativa ou Suspensa: revogue-a ou exclua-a antes.",
-          agora,
-        );
+        await recusarSeHaLicencaEmVigor(tx, { clienteId: id }, agora);
         await tx.update(clientes).set({ excluidoEm: agora }).where(eq(clientes.id, id));
       });
     },
