@@ -1,12 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { nucleoDaInstancia } from "@/nucleo/producao";
+
+export const metadata: Metadata = { title: "Clientes" };
 
 export default async function Clientes({ searchParams }: { searchParams: Promise<{ busca?: string | string[] }> }) {
   const { busca: parametro } = await searchParams;
   const busca = (Array.isArray(parametro) ? parametro[0] : parametro) ?? "";
   const clientes = await nucleoDaInstancia().listarClientes({ busca });
   return (
-    <>
+    <div className="legado">
       <div className="titulo">
         <h1>Clientes</h1>
         <Link href="/clientes/novo">Novo Cliente</Link>
@@ -39,6 +42,6 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
           </tbody>
         </table>
       )}
-    </>
+    </div>
   );
 }

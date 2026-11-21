@@ -12,6 +12,6 @@ export function proxy(requisicao: NextRequest) {
 }
 
 export const config = {
-  // Públicos: a tela de entrada, a API (Validação e saúde) e os arquivos do Next.
-  matcher: ["/((?!entrar$|api/|_next/|favicon\\.ico$).*)"],
+  // Públicos: a tela de entrada, a API (Validação e saúde), os arquivos do Next e o favicon.
+  matcher: ["/((?!entrar$|api/|_next/|favicon\\.ico$|icon$).*)"],
 };

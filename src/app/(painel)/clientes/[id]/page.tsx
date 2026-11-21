@@ -1,21 +1,27 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { TabelaLicencas } from "../../licencas/tabela";
 import { excluirCliente } from "../../excluidos/acoes";
 import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
+import { obterClienteDaRota } from "../cliente-da-rota";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const cliente = await obterClienteDaRota((await params).id);
+  return { title: cliente?.nome };
+}
+
 export default async function DetalheCliente({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const nucleo = nucleoDaInstancia();
-  const cliente = /^\d+$/.test(id) ? await nucleo.obterCliente(Number(id)) : null;
+  const cliente = await obterClienteDaRota(id);
   if (!cliente) notFound();
-  const licencas = await nucleo.listarLicencas({ cliente: cliente.id });
+  const licencas = await nucleoDaInstancia().listarLicencas({ cliente: cliente.id });
 
   return (
-    <>
+    <div className="legado">
       <p><Link href="/clientes">← Clientes</Link></p>
       <div className="titulo">
         <h1>{cliente.nome}</h1>
@@ -33,6 +39,6 @@ export default async function DetalheCliente({ params }: { params: Promise<{ id:
         Validação; o e-mail continua ocupado. Não é possível com Licença Ativa ou Suspensa.
       </p>
       <FormularioExclusao acao={excluirCliente} campos={{ id: String(cliente.id) }} item="este Cliente" />
-    </>
+    </div>
   );
 }

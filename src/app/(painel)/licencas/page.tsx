@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ESTADOS_LICENCA } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
@@ -8,6 +9,18 @@ export const dynamic = "force-dynamic";
 
 type Parametros = Record<"produto" | "cliente" | "estado" | "prefixo" | "aVencer", string | string[] | undefined>;
 
+function soAVencer(busca: Partial<Parametros>): boolean {
+  return parametro(busca.aVencer) === "1";
+}
+
+function titulo(aVencer: boolean): string {
+  return aVencer ? "Licenças a vencer" : "Licenças";
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Partial<Parametros>> }): Promise<Metadata> {
+  return { title: titulo(soAVencer(await searchParams)) };
+}
+
 export default async function Licencas({ searchParams }: { searchParams: Promise<Partial<Parametros>> }) {
   const busca = await searchParams;
   const filtro = {
@@ -16,7 +29,7 @@ export default async function Licencas({ searchParams }: { searchParams: Promise
     estado: parametro(busca.estado),
     prefixo: parametro(busca.prefixo),
   };
-  const aVencer = parametro(busca.aVencer) === "1";
+  const aVencer = soAVencer(busca);
   const estado = ESTADOS_LICENCA.find((e) => e === filtro.estado);
 
   const nucleo = nucleoDaInstancia();
@@ -34,9 +47,9 @@ export default async function Licencas({ searchParams }: { searchParams: Promise
   const filtrando = aVencer || Object.values(filtro).some(Boolean);
 
   return (
-    <>
+    <div className="legado">
       <div className="titulo">
-        <h1>{aVencer ? "Licenças a vencer" : "Licenças"}</h1>
+        <h1>{titulo(aVencer)}</h1>
         <Link className="botao" href="/licencas/nova">Emitir Licença</Link>
       </div>
       <p>
@@ -64,6 +77,6 @@ export default async function Licencas({ searchParams }: { searchParams: Promise
       ) : (
         <TabelaLicencas licencas={licencas} />
       )}
-    </>
+    </div>
   );
 }

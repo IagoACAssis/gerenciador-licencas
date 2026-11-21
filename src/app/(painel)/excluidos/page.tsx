@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { formatarDataHora } from "../formatacao";
 import { FormularioRecusavel } from "../formulario-recusavel";
 import { restaurarCliente, restaurarLicenca, restaurarProduto } from "./acoes";
+
+export const metadata: Metadata = { title: "Excluídos" };
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +21,7 @@ export default async function Excluidos() {
   const excluidos = await nucleoDaInstancia().listarExcluidos();
   const vazio = excluidos.produtos.length + excluidos.clientes.length + excluidos.licencas.length === 0;
   return (
-    <>
+    <div className="legado">
       <h1>Excluídos</h1>
       <p>
         Nada aqui foi apagado. A restauração devolve o item como estava; restaurar um Produto ou um Cliente
@@ -81,6 +84,6 @@ export default async function Excluidos() {
         </>
       )}
       <p><Link href="/">← Painel</Link></p>
-    </>
+    </div>
   );
 }

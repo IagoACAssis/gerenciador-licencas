@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { parametro } from "../../formatacao";
 import { FormularioEmissao } from "../formulario-emissao";
+
+export const metadata: Metadata = { title: "Emitir Licença" };
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +15,7 @@ export default async function NovaLicenca({ searchParams }: {
   const nucleo = nucleoDaInstancia();
   const [produtos, clientes] = await Promise.all([nucleo.listarProdutos(), nucleo.listarClientes()]);
   return (
-    <>
+    <div className="legado">
       <p><Link href="/licencas">← Licenças</Link></p>
       <h1>Emitir Licença</h1>
       {produtos.length === 0 || clientes.length === 0 ? (
@@ -27,6 +30,6 @@ export default async function NovaLicenca({ searchParams }: {
           inicial={{ produto: parametro(busca.produto), cliente: parametro(busca.cliente) }}
         />
       )}
-    </>
+    </div>
   );
 }
