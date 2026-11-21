@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { administradorAutenticado, sair } from "@/acesso/administrador";
@@ -16,6 +17,9 @@ export default async function LayoutPainel({ children }: { children: ReactNode }
     <>
       <header>
         <strong>Gerenciador de Licenças</strong>
+        <nav>
+          <Link href="/clientes">Clientes</Link>
+        </nav>
         <form action={sairDoPainel}>
           <button type="submit">Sair</button>
         </form>
