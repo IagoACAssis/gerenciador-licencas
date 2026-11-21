@@ -3,22 +3,47 @@ import { notFound } from "next/navigation";
 import type { EventoLicenca } from "@/nucleo";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { formatarData, formatarDataHora } from "../../formatacao";
-import { removerAtivacao, zerarContagemDeSubstituicoes } from "../acoes";
+import {
+  alterarLimiteDeAtivacoes,
+  reativarLicenca,
+  removerAtivacao,
+  renovarLicenca,
+  revogarLicenca,
+  suspenderLicenca,
+  zerarContagemDeSubstituicoes,
+} from "../acoes";
 import { Estado } from "../tabela";
+import { FormularioAcao } from "./formulario-acao";
 
 export const dynamic = "force-dynamic";
 
+function descreverLimite(limite: number | null): string {
+  return limite === null ? "padrão do Produto" : String(limite);
+}
+
 function descreverEvento(evento: EventoLicenca): string {
-  if (evento.tipo === "ativacao_removida") {
-    const nome = evento.nomeDispositivo ? ` (${evento.nomeDispositivo})` : "";
-    return `Ativação removida pelo Administrador: ${evento.dispositivo}${nome}.`;
+  switch (evento.tipo) {
+    case "ativacao_removida": {
+      const nome = evento.nomeDispositivo ? ` (${evento.nomeDispositivo})` : "";
+      return `Ativação removida pelo Administrador: ${evento.dispositivo}${nome}.`;
+    }
+    case "contagem_substituicoes_zerada":
+      return "Contagem de Substituições de ativação zerada.";
+    case "renovacao":
+      return `Renovação: data de validade de ${formatarData(evento.validaAteAnterior)} para ${formatarData(evento.validaAte)}.`;
+    case "limite_alterado":
+      return `Limite de ativações alterado de ${descreverLimite(evento.limiteAnterior)} para ${descreverLimite(evento.limiteAtivacoes)}.`;
+    case "suspensao":
+      return "Suspensão.";
+    case "reativacao":
+      return "Reativação.";
+    case "revogacao":
+      return "Revogação.";
+    case "emissao": {
+      const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
+      return `Emissão: ${validade}, Limite de ativações ${descreverLimite(evento.limiteAtivacoes)}.`;
+    }
   }
-  if (evento.tipo === "contagem_substituicoes_zerada") return "Contagem de Substituições de ativação zerada.";
-  const validade = evento.validaAte ? `válida até ${formatarData(evento.validaAte)}` : "perpétua";
-  const limite = evento.limiteAtivacoes === null
-    ? "Limite de ativações padrão do Produto"
-    : `Limite de ativações ${evento.limiteAtivacoes}`;
-  return `Emissão: ${validade}, ${limite}.`;
 }
 
 export default async function DetalheLicenca({ params }: { params: Promise<{ prefixo: string }> }) {
@@ -45,6 +70,58 @@ export default async function DetalheLicenca({ params }: { params: Promise<{ pre
           <dt>Emitida em</dt>
           <dd>{formatarDataHora(licenca.emitidaEm)}</dd>
         </dl>
+      </section>
+      <h2>Ciclo de vida</h2>
+      <section className="cartao ciclo-de-vida">
+        {licenca.estado === "Revogada" ? (
+          <p>Licença Revogada: a Revogação é definitiva e a Licença não pode mais ser alterada.</p>
+        ) : (
+          <>
+            {licenca.validaAte && (
+              <FormularioAcao acao={renovarLicenca} prefixo={licenca.prefixo}>
+                <label>
+                  Nova data de validade
+                  <input name="validaAte" type="date" required />
+                </label>
+                <button type="submit">Renovar</button>
+                <small>Muda só a data de validade; a Chave de licença e as Ativações continuam as mesmas.</small>
+              </FormularioAcao>
+            )}
+            <FormularioAcao acao={alterarLimiteDeAtivacoes} prefixo={licenca.prefixo}>
+              <label>
+                Limite de ativações
+                <input
+                  name="limiteAtivacoes"
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  defaultValue={licenca.limiteProprio ?? ""}
+                />
+              </label>
+              <button type="submit">Alterar limite</button>
+              <small>Vazio, segue o padrão do Produto. Um limite menor não remove Ativações existentes.</small>
+            </FormularioAcao>
+            {licenca.estado === "Suspensa" ? (
+              <FormularioAcao acao={reativarLicenca} prefixo={licenca.prefixo}>
+                <button type="submit">Reativar</button>
+                <small>As Ativações voltam a valer.</small>
+              </FormularioAcao>
+            ) : (
+              <FormularioAcao acao={suspenderLicenca} prefixo={licenca.prefixo}>
+                <button type="submit">Suspender</button>
+                <small>As Ativações são mantidas, mas a Validação passa a recusá-las até a reativação.</small>
+              </FormularioAcao>
+            )}
+            <FormularioAcao acao={revogarLicenca} prefixo={licenca.prefixo}>
+              <label className="confirmacao">
+                <input name="confirmacao" type="checkbox" value="sim" required />
+                Entendo que a Revogação é definitiva e não pode ser desfeita.
+              </label>
+              <button type="submit">Revogar</button>
+            </FormularioAcao>
+          </>
+        )}
       </section>
       <h2>Ativações ({licenca.ativacoes.length} de {licenca.limiteAtivacoes})</h2>
       {licenca.ativacoes.length === 0 ? (

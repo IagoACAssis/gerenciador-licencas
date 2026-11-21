@@ -43,6 +43,13 @@
       "when": 1795232129612,
       "tag": "0005_substituicoes_ativacao",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795233391276,
+      "tag": "0006_ciclo_de_vida",
+      "breakpoints": true
     }
   ]
 }

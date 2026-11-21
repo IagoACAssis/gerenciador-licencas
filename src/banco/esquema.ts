@@ -53,6 +53,10 @@ export const licencas = pgTable(
     limiteAtivacoes: integer("limite_ativacoes"),
     /** Último "zerar contagem" do Administrador: só contam para a Cota as Substituições de ativação depois dele. */
     contagemSubstituicoesZeradaEm: timestamp("contagem_substituicoes_zerada_em", { withTimezone: true }),
+    /** Preenchida enquanto a Licença está Suspensa; a reativação a esvazia. */
+    suspensaEm: timestamp("suspensa_em", { withTimezone: true }),
+    /** Preenchida na Revogação, que é definitiva. */
+    revogadaEm: timestamp("revogada_em", { withTimezone: true }),
     emitidaEm: timestamp("emitida_em", { withTimezone: true }).notNull(),
   },
   (tabela) => [
