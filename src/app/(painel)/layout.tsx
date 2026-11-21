@@ -21,6 +21,7 @@ export default async function LayoutPainel({ children }: { children: ReactNode }
           <Link href="/produtos">Produtos</Link>
           <Link href="/clientes">Clientes</Link>
           <Link href="/licencas">Licenças</Link>
+          <Link href="/excluidos">Excluídos</Link>
         </nav>
         <form action={sairDoPainel}>
           <button type="submit">Sair</button>

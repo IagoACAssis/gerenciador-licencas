@@ -1,6 +1,7 @@
 "use client";
-import { useActionState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { EstadoAcaoNaLicenca } from "../acoes";
+import { FormularioRecusavel } from "../../formulario-recusavel";
 
 /** Formulário de uma ação de ciclo de vida: envia o prefixo e mostra a recusa do núcleo, se houver. */
 export function FormularioAcao({ acao, prefixo, children }: {
@@ -8,12 +9,5 @@ export function FormularioAcao({ acao, prefixo, children }: {
   prefixo: string;
   children: ReactNode;
 }) {
-  const [estado, despachar, enviando] = useActionState(acao, {});
-  return (
-    <form action={despachar} className="acao-licenca">
-      <input type="hidden" name="prefixo" value={prefixo} />
-      <fieldset disabled={enviando}>{children}</fieldset>
-      {estado.erro && <p className="erro" role="alert">{estado.erro}</p>}
-    </form>
-  );
+  return <FormularioRecusavel acao={acao} campos={{ prefixo }} className="acao">{children}</FormularioRecusavel>;
 }

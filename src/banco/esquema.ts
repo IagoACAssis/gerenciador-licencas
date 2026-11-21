@@ -19,6 +19,8 @@ export const produtos = pgTable("produtos", {
   /** Chave privada Ed25519 cifrada com CHAVES_SEGREDO (veja src/nucleo/chaves.ts). */
   chavePrivadaCifrada: text("chave_privada_cifrada").notNull(),
   cadastradoEm: timestamp("cadastrado_em", { withTimezone: true }).notNull(),
+  /** Preenchida na Exclusão; a restauração a esvazia. O registro nunca é apagado. */
+  excluidoEm: timestamp("excluido_em", { withTimezone: true }),
 });
 
 export const clientes = pgTable(
@@ -30,6 +32,8 @@ export const clientes = pgTable(
     email: text("email").notNull(),
     criadoEm: timestamp("criado_em", { withTimezone: true }).notNull(),
     atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull(),
+    /** Preenchida na Exclusão; a restauração a esvazia. O e-mail continua ocupado enquanto isso. */
+    excluidoEm: timestamp("excluido_em", { withTimezone: true }),
   },
   (tabela) => [
     // Dois Clientes não podem ter o mesmo e-mail na Instância, sem diferenciar maiúsculas.
@@ -58,6 +62,8 @@ export const licencas = pgTable(
     /** Preenchida na Revogação, que é definitiva. */
     revogadaEm: timestamp("revogada_em", { withTimezone: true }),
     emitidaEm: timestamp("emitida_em", { withTimezone: true }).notNull(),
+    /** Preenchida na Exclusão; a restauração a esvazia. O registro nunca é apagado. */
+    excluidaEm: timestamp("excluida_em", { withTimezone: true }),
   },
   (tabela) => [
     uniqueIndex("licencas_hash_chave_unico").on(tabela.hashChave),

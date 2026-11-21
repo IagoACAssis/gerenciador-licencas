@@ -5,6 +5,7 @@ import { TAMANHO_DO_PREFIXO, emGrupos, gerarChave, lerPrefixo, normalizarChave }
 import { calcularSituacao, limiteDeAtivacoes, type EstadoLicenca } from "./estado.ts";
 import type { Transacao } from "../banco/conexao.ts";
 import type { DependenciasNucleo } from "./index.ts";
+import { clienteNaoExcluido, estaEmUso, licencaEmUso, produtoNaoExcluido, recusarSeDonoExcluido } from "./exclusao.ts";
 import { substituicoesNoPeriodo } from "./substituicoes.ts";
 
 export { ESTADOS_LICENCA, type EstadoLicenca } from "./estado.ts";
@@ -45,6 +46,8 @@ export type EventoLicenca =
   | { tipo: "suspensao"; ocorridoEm: Date }
   | { tipo: "reativacao"; ocorridoEm: Date }
   | { tipo: "revogacao"; ocorridoEm: Date }
+  | { tipo: "exclusao"; ocorridoEm: Date }
+  | { tipo: "restauracao"; ocorridoEm: Date }
   | { tipo: "renovacao"; ocorridoEm: Date; validaAteAnterior: Date; validaAte: Date }
   | { tipo: "limite_alterado"; ocorridoEm: Date; limiteAnterior: number | null; limiteAtivacoes: number | null }
   | { tipo: "troca_de_chave"; ocorridoEm: Date; prefixoAnterior: string };
@@ -167,7 +170,14 @@ function paraLicenca(linha: Linha, agora: Date): Licenca {
 }
 
 function paraEvento(linha: { tipo: string; dados: unknown; ocorridoEm: Date }): EventoLicenca {
-  if (linha.tipo === "contagem_substituicoes_zerada" || linha.tipo === "suspensao" || linha.tipo === "reativacao" || linha.tipo === "revogacao") {
+  if (
+    linha.tipo === "contagem_substituicoes_zerada" ||
+    linha.tipo === "suspensao" ||
+    linha.tipo === "reativacao" ||
+    linha.tipo === "revogacao" ||
+    linha.tipo === "exclusao" ||
+    linha.tipo === "restauracao"
+  ) {
     return { tipo: linha.tipo, ocorridoEm: linha.ocorridoEm };
   }
   if (linha.tipo === "ativacao_removida") {
@@ -216,6 +226,9 @@ function erroNoLimite(limite: number | null): string | undefined {
 /** O que uma ação do Administrador lê da Licença travada: o que as recusas precisam. */
 const colunasTravadas = {
   id: licencas.id,
+  produtoId: licencas.produtoId,
+  clienteId: licencas.clienteId,
+  excluidaEm: licencas.excluidaEm,
   prefixoChave: licencas.prefixoChave,
   validaAte: licencas.validaAte,
   limiteAtivacoes: licencas.limiteAtivacoes,
@@ -248,26 +261,38 @@ async function comChaveNova<T>(
 }
 
 export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: DependenciasNucleo) {
-  function consulta() {
+  /** Só as Licenças em uso: as excluídas e as de Produto ou Cliente excluído ficam de fora. */
+  function consulta(condicao?: SQL) {
     return banco
       .select(colunas)
       .from(licencas)
       .innerJoin(produtos, eq(licencas.produtoId, produtos.id))
-      .innerJoin(clientes, eq(licencas.clienteId, clientes.id));
+      .innerJoin(clientes, eq(licencas.clienteId, clientes.id))
+      .where(and(licencaEmUso, condicao));
   }
 
-  async function validar(dados: DadosEmissao, agora: Date) {
+  /**
+   * Confere os dados da Emissão dentro da transação dela. Produto e Cliente
+   * excluídos contam como inexistentes, e ficam travados (FOR SHARE) até o fim,
+   * para que uma Exclusão simultânea espere e então encontre a Licença nova.
+   */
+  async function validar(tx: Transacao, dados: DadosEmissao, agora: Date) {
     const erros: Partial<Record<CampoLicenca, string>> = {};
-    const [produto] = await banco
+    const [produto] = await tx
       .select({ id: produtos.id })
       .from(produtos)
-      .where(eq(produtos.identificador, dados.produto));
+      .where(and(eq(produtos.identificador, dados.produto), produtoNaoExcluido))
+      .for("share");
     if (!produto) erros.produto = "Escolha um Produto cadastrado.";
 
     const idCliente = dados.cliente;
     const [cliente] =
       idValido(idCliente)
-        ? await banco.select({ id: clientes.id }).from(clientes).where(eq(clientes.id, idCliente))
+        ? await tx
+            .select({ id: clientes.id })
+            .from(clientes)
+            .where(and(eq(clientes.id, idCliente), clienteNaoExcluido))
+            .for("share")
         : [];
     if (!cliente) erros.cliente = "Escolha um Cliente cadastrado.";
 
@@ -286,11 +311,14 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
   /**
    * Roda uma ação do Administrador sobre a Licença do prefixo, com ela travada,
    * como na Validação, e registra o evento no histórico na mesma transação.
+   * `alcance` diz qual Licença a ação encontra: só a em uso (o normal) ou só a
+   * excluída (para a restauração); qualquer outra conta como LicencaNaoEncontrada.
    * Devolve o id da Licença e o instante da ação.
    */
   async function emTransacaoNaLicenca(
     prefixo: string,
     acao: (tx: Transacao, licenca: LicencaTravada, agora: Date) => Promise<NovoEvento>,
+    alcance: "em uso" | "excluida" = "em uso",
   ): Promise<{ id: number; agora: Date }> {
     const normalizado = lerPrefixo(prefixo);
     const agora = relogio.agora();
@@ -303,7 +331,10 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
               .where(eq(licencas.prefixoChave, normalizado))
               .for("update")
           : [];
-      if (!licenca) throw new LicencaNaoEncontrada();
+      // "Em uso" é conferido depois da trava: uma Exclusão do Produto ou do Cliente que acabou de terminar já aparece.
+      const encontrada =
+        !!licenca && (alcance === "excluida" ? licenca.excluidaEm !== null : await estaEmUso(tx, licenca.id));
+      if (!encontrada) throw new LicencaNaoEncontrada();
       const { tipo, ...dados } = await acao(tx, licenca, agora);
       await tx.insert(eventosLicenca).values({ licencaId: licenca.id, tipo, dados, ocorridoEm: agora });
       return { id: licenca.id, agora };
@@ -313,7 +344,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
   const bytesAleatorios = (quantidade: number) => aleatoriedade.bytes(quantidade);
 
   async function obterPorId(id: number, agora: Date): Promise<Licenca> {
-    const [linha] = await consulta().where(eq(licencas.id, id));
+    const [linha] = await consulta(eq(licencas.id, id));
     return paraLicenca(linha!, agora);
   }
 
@@ -325,9 +356,9 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
      */
     async emitirLicenca(dados: DadosEmissao): Promise<{ licenca: Licenca; chave: string }> {
       const agora = relogio.agora();
-      const valores = await validar(dados, agora);
       return comChaveNova(bytesAleatorios, async ({ chave, hash, prefixo }) => {
         const id = await banco.transaction(async (tx) => {
+          const valores = await validar(tx, dados, agora);
           const [licenca] = await tx
             .insert(licencas)
             .values({ ...valores, hashChave: hash, prefixoChave: prefixo, emitidaEm: agora })
@@ -376,8 +407,7 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       // Depois de normalizado, o prefixo só tem letras e números: nada a escapar no LIKE.
       if (prefixo) condicoes.push(like(licencas.prefixoChave, `${prefixo}%`));
 
-      const linhas = await consulta()
-        .where(and(...condicoes))
+      const linhas = await consulta(and(...condicoes))
         .orderBy(filtro.aVencer ? asc(licencas.validaAte) : desc(licencas.emitidaEm), desc(licencas.id));
       // O estado depende das regras atuais e do momento: o filtro por ele é feito depois do cálculo.
       return linhas
@@ -489,11 +519,41 @@ export function casosDeUsoDeLicencas({ banco, relogio, aleatoriedade }: Dependen
       });
     },
 
+    /**
+     * Exclusão de uma Licença criada por engano, em qualquer estado: ela sai das
+     * listas e das consultas e a Validação responde "chave_invalida", mas nada é
+     * apagado. Lança LicencaNaoEncontrada para um prefixo sem Licença em uso.
+     */
+    async excluirLicenca(prefixo: string): Promise<void> {
+      await emTransacaoNaLicenca(prefixo, async (tx, licenca, agora) => {
+        await tx.update(licencas).set({ excluidaEm: agora }).where(eq(licencas.id, licenca.id));
+        return { tipo: "exclusao" };
+      });
+    },
+
+    /**
+     * Desfaz a Exclusão: a Licença volta como estava, com estado, data de validade,
+     * Ativações, histórico e Chave de licença. Lança LicencaNaoEncontrada para um
+     * prefixo sem Licença excluída e recusa (ExclusaoNaoPermitida) se o Produto ou
+     * o Cliente dela estiver excluído.
+     */
+    async restaurarLicenca(prefixo: string): Promise<void> {
+      await emTransacaoNaLicenca(
+        prefixo,
+        async (tx, licenca) => {
+          await recusarSeDonoExcluido(tx, licenca);
+          await tx.update(licencas).set({ excluidaEm: null }).where(eq(licencas.id, licenca.id));
+          return { tipo: "restauracao" };
+        },
+        "excluida",
+      );
+    },
+
     /** Detalhe da Licença pelo prefixo da Chave (com ou sem hífen), com o histórico e as Ativações em ordem. */
     async obterLicenca(prefixo: string): Promise<DetalheLicenca | null> {
       const normalizado = lerPrefixo(prefixo);
       if (!normalizado) return null;
-      const [linha] = await consulta().where(eq(licencas.prefixoChave, normalizado));
+      const [linha] = await consulta(eq(licencas.prefixoChave, normalizado));
       if (!linha) return null;
       const eventos = await banco
         .select({ tipo: eventosLicenca.tipo, dados: eventosLicenca.dados, ocorridoEm: eventosLicenca.ocorridoEm })

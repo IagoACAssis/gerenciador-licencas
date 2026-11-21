@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { nucleoDaInstancia } from "@/nucleo/producao";
 import { TabelaLicencas } from "../../licencas/tabela";
+import { excluirCliente } from "../../excluidos/acoes";
+import { FormularioExclusao } from "../../excluidos/formulario-exclusao";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,12 @@ export default async function DetalheCliente({ params }: { params: Promise<{ id:
         <Link className="botao" href={`/licencas/nova?cliente=${cliente.id}`}>Emitir Licença</Link>
       </div>
       {licencas.length === 0 ? <p>Este Cliente ainda não tem Licenças.</p> : <TabelaLicencas licencas={licencas} semCliente />}
+      <h2>Exclusão</h2>
+      <p>
+        Para um Cliente cadastrado por engano. Ele e as Licenças dele saem das listas e deixam de valer na
+        Validação; o e-mail continua ocupado. Não é possível com Licença Ativa ou Suspensa.
+      </p>
+      <FormularioExclusao acao={excluirCliente} campos={{ id: String(cliente.id) }} item="este Cliente" />
     </>
   );
 }

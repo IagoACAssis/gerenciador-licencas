@@ -33,7 +33,7 @@ Não existe credencial de Produto: quem autentica o pedido é a Chave de licenç
 | --- | --- | --- |
 | `200` | Toda resposta de negócio, aceita **ou recusada** | `{ "carga": "<JSON em texto>", "assinatura": "<base64url>" }` |
 | `400` | Pedido malformado (JSON inválido, campo faltando ou fora do tamanho) | `{ "erro": "…", "erros": { "<campo>": "…" } }`, sem assinatura |
-| `404` | Identificador de Produto inexistente | `{ "erro": "Produto não encontrado." }`, sem assinatura (trate como erro de configuração) |
+| `404` | Identificador de Produto inexistente ou de Produto excluído | `{ "erro": "Produto não encontrado." }`, sem assinatura (trate como erro de configuração) |
 | `429` | Limite de requisições por IP excedido | `{ "erro": "…", "esperaSegundos": n }` e o cabeçalho `Retry-After` |
 
 Só a resposta `200` é assinada. As outras não decidem nada sobre a Licença: o Produto não deve tratá-las como aceitação nem como recusa definitiva.
@@ -62,7 +62,7 @@ Só a resposta `200` é assinada. As outras não decidem nada sobre a Licença: 
 
 Datas em ISO 8601, em UTC (`2026-01-08T12:00:00.000Z`). Campos novos podem ser acrescentados no futuro: ignore os que não conhecer.
 
-A recusa `chave_invalida` é a mesma para Chave inexistente e para Chave de outro Produto, para que ninguém descubra nada pela resposta. Recusas por estado (`licenca_*`) não criam nem atualizam Ativações.
+A recusa `chave_invalida` é a mesma para Chave inexistente, para Chave de outro Produto e para Licença excluída (ou de Cliente excluído), para que ninguém descubra nada pela resposta. Recusas por estado (`licenca_*`) não criam nem atualizam Ativações.
 
 ### Ativações e Substituição de ativação
 

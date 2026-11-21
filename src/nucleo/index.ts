@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Banco } from "../banco/conexao.ts";
 import { casosDeUsoDeClientes } from "./clientes.ts";
+import { casosDeUsoDeExclusao } from "./exclusao.ts";
 import { casosDeUsoDeLicencas } from "./licencas.ts";
 import { casosDeUsoDeProdutos } from "./produtos.ts";
 import { casosDeUsoDeValidacao } from "./validacao.ts";
@@ -38,6 +39,8 @@ export {
   type Licenca,
   type SubstituicaoAtivacao,
 } from "./licencas.ts";
+
+export { ExclusaoNaoPermitida, type Excluidos } from "./exclusao.ts";
 
 export {
   DadosDeValidacaoInvalidos,
@@ -80,6 +83,7 @@ export function criarNucleo(dependencias: DependenciasNucleo) {
     ...casosDeUsoDeClientes(dependencias),
     ...casosDeUsoDeLicencas(dependencias),
     ...casosDeUsoDeValidacao(dependencias),
+    ...casosDeUsoDeExclusao(dependencias),
   };
 }
 

@@ -1,6 +1,7 @@
-import { asc, eq, ilike, or } from "drizzle-orm";
+import { and, asc, eq, ilike, isNotNull, or } from "drizzle-orm";
 import { clientes } from "../banco/esquema.ts";
 import { idValido, violouUnicidade } from "../banco/postgres.ts";
+import { clienteNaoExcluido as naoExcluido, recusarSeHaLicencaEmVigor } from "./exclusao.ts";
 import type { DependenciasNucleo } from "./index.ts";
 
 export interface Cliente {
@@ -35,6 +36,7 @@ export class ClienteNaoEncontrado extends Error {
 }
 
 const EMAIL_JA_USADO = "Já existe um Cliente com este e-mail.";
+const EMAIL_DE_EXCLUIDO = "Já existe um Cliente excluído com este e-mail: restaure-o na lista de excluídos.";
 const TAMANHO_MAXIMO_NOME = 200;
 const TAMANHO_MAXIMO_EMAIL = 254;
 // Só confere o formato geral (algo@dominio.tld); quem garante que o e-mail existe é o Administrador.
@@ -55,13 +57,14 @@ function validar(dados: DadosDoCliente): DadosDoCliente {
   return { nome, email };
 }
 
-/** Troca a violação do índice único de e-mail pela recusa com mensagem clara. */
-function traduzirEmailRepetido(erro: unknown): never {
-  if (violouUnicidade(erro, "clientes_email_unico")) {
-    throw new DadosDeClienteInvalidos({ email: EMAIL_JA_USADO });
-  }
-  throw erro;
-}
+/** O Cliente como sai do núcleo, sem a data de exclusão. */
+const colunas = {
+  id: clientes.id,
+  nome: clientes.nome,
+  email: clientes.email,
+  criadoEm: clientes.criadoEm,
+  atualizadoEm: clientes.atualizadoEm,
+};
 
 /** `%`, `_` e `\` têm significado no ILIKE; escapados, a busca os trata como texto comum. */
 function padraoDeTrecho(trecho: string): string {
@@ -69,6 +72,19 @@ function padraoDeTrecho(trecho: string): string {
 }
 
 export function casosDeUsoDeClientes({ banco, relogio }: DependenciasNucleo) {
+  /**
+   * Troca a violação do índice único de e-mail pela recusa com mensagem clara. Um
+   * Cliente excluído continua ocupando o e-mail, para que a restauração nunca conflite.
+   */
+  async function traduzirEmailRepetido(erro: unknown, email: string): Promise<never> {
+    if (!violouUnicidade(erro, "clientes_email_unico")) throw erro;
+    const [excluido] = await banco
+      .select({ id: clientes.id })
+      .from(clientes)
+      .where(and(eq(clientes.email, email), isNotNull(clientes.excluidoEm)));
+    throw new DadosDeClienteInvalidos({ email: excluido ? EMAIL_DE_EXCLUIDO : EMAIL_JA_USADO });
+  }
+
   return {
     /** Cadastra um Cliente. Recusa (DadosDeClienteInvalidos) dados inválidos ou e-mail já usado. */
     async cadastrarCliente(dados: DadosDoCliente): Promise<Cliente> {
@@ -77,14 +93,15 @@ export function casosDeUsoDeClientes({ banco, relogio }: DependenciasNucleo) {
       const [cliente] = await banco
         .insert(clientes)
         .values({ nome, email, criadoEm: agora, atualizadoEm: agora })
-        .returning()
-        .catch(traduzirEmailRepetido);
+        .returning(colunas)
+        .catch((erro: unknown) => traduzirEmailRepetido(erro, email));
       return cliente!;
     },
 
     /**
      * Troca o nome e o e-mail de um Cliente. Recusa (DadosDeClienteInvalidos) dados
-     * inválidos ou e-mail de outro Cliente, e lança ClienteNaoEncontrado se o id não existir.
+     * inválidos ou e-mail de outro Cliente, e lança ClienteNaoEncontrado se o id não
+     * existir ou for de Cliente excluído.
      */
     async editarCliente(id: number, dados: DadosDoCliente): Promise<Cliente> {
       const { nome, email } = validar(dados);
@@ -92,21 +109,22 @@ export function casosDeUsoDeClientes({ banco, relogio }: DependenciasNucleo) {
       const [cliente] = await banco
         .update(clientes)
         .set({ nome, email, atualizadoEm: relogio.agora() })
-        .where(eq(clientes.id, id))
-        .returning()
-        .catch(traduzirEmailRepetido);
+        .where(and(eq(clientes.id, id), naoExcluido))
+        .returning(colunas)
+        .catch((erro: unknown) => traduzirEmailRepetido(erro, email));
       if (!cliente) throw new ClienteNaoEncontrado(id);
       return cliente;
     },
 
+    /** O Cliente do id; null se não existir ou estiver excluído. */
     async obterCliente(id: number): Promise<Cliente | null> {
       if (!idValido(id)) return null;
-      const [cliente] = await banco.select().from(clientes).where(eq(clientes.id, id));
+      const [cliente] = await banco.select(colunas).from(clientes).where(and(eq(clientes.id, id), naoExcluido));
       return cliente ?? null;
     },
 
     /**
-     * Lista os Clientes em ordem de nome. Com `busca`, só os que têm o trecho no nome
+     * Lista os Clientes não excluídos em ordem de nome. Com `busca`, só os que têm o trecho no nome
      * ou no e-mail, sem diferenciar maiúsculas.
      */
     async listarClientes({ busca = "" }: { busca?: string } = {}): Promise<Cliente[]> {
@@ -114,7 +132,40 @@ export function casosDeUsoDeClientes({ banco, relogio }: DependenciasNucleo) {
       const filtro = trecho
         ? or(ilike(clientes.nome, padraoDeTrecho(trecho)), ilike(clientes.email, padraoDeTrecho(trecho)))
         : undefined;
-      return banco.select().from(clientes).where(filtro).orderBy(asc(clientes.nome), asc(clientes.id));
+      return banco.select(colunas).from(clientes).where(and(naoExcluido, filtro)).orderBy(asc(clientes.nome), asc(clientes.id));
+    },
+
+    /**
+     * Exclusão do Cliente: ele e as Licenças dele saem das listas e das consultas,
+     * e as Licenças deixam de valer na Validação. Nada é apagado, e o e-mail continua
+     * ocupado. Recusa (ExclusaoNaoPermitida) se houver Licença em uso Ativa ou
+     * Suspensa; lança ClienteNaoEncontrado se não houver Cliente não excluído.
+     */
+    async excluirCliente(id: number): Promise<void> {
+      if (!idValido(id)) throw new ClienteNaoEncontrado(id);
+      const agora = relogio.agora();
+      await banco.transaction(async (tx) => {
+        // Travado: Emissões e restaurações de Licença simultâneas esperam a Exclusão terminar.
+        const [cliente] = await tx
+          .select({ id: clientes.id })
+          .from(clientes)
+          .where(and(eq(clientes.id, id), naoExcluido))
+          .for("update");
+        if (!cliente) throw new ClienteNaoEncontrado(id);
+        await recusarSeHaLicencaEmVigor(tx, { clienteId: id }, agora);
+        await tx.update(clientes).set({ excluidoEm: agora }).where(eq(clientes.id, id));
+      });
+    },
+
+    /** Desfaz a Exclusão: o Cliente volta com as Licenças dele. Lança ClienteNaoEncontrado se não houver Cliente excluído. */
+    async restaurarCliente(id: number): Promise<void> {
+      if (!idValido(id)) throw new ClienteNaoEncontrado(id);
+      const restaurados = await banco
+        .update(clientes)
+        .set({ excluidoEm: null })
+        .where(and(eq(clientes.id, id), isNotNull(clientes.excluidoEm)))
+        .returning({ id: clientes.id });
+      if (restaurados.length === 0) throw new ClienteNaoEncontrado(id);
     },
   };
 }
