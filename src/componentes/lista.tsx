@@ -17,11 +17,13 @@ export interface Coluna<T> {
  * inteira: clicar em qualquer ponto dela abre o detalhe, e o foco contorna a linha toda.
  * Por isso as células não devem ter outros links ou botões.
  */
-export function Tabela<T>({ colunas, itens, chave, href }: {
+export function Tabela<T>({ colunas, itens, chave, href, rotulo }: {
   colunas: [Coluna<T>, ...Coluna<T>[]];
   itens: T[];
   chave: (item: T) => string | number;
   href: (item: T) => string;
+  /** Nome do link para o leitor de tela, quando a primeira célula sozinha não diz o que é a linha. */
+  rotulo?: (item: T) => string;
 }) {
   const [principal, ...demais] = colunas;
   return (
@@ -42,6 +44,7 @@ export function Tabela<T>({ colunas, itens, chave, href }: {
               <td className={`px-4 py-3 ${principal.classe ?? ""}`}>
                 <Link
                   href={href(item)}
+                  aria-label={rotulo?.(item)}
                   className="outline-none group-hover:text-acento after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-acento"
                 >
                   {principal.celula(item)}

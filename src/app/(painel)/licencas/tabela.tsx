@@ -22,5 +22,13 @@ export function TabelaLicencas({ licencas, semCliente = false }: { licencas: Lic
       ),
     },
   ];
-  return <Tabela colunas={colunas} itens={licencas} chave={(l) => l.prefixo} href={(l) => `/licencas/${l.prefixo}`} />;
+  return (
+    <Tabela
+      colunas={colunas}
+      itens={licencas}
+      chave={(l) => l.prefixo}
+      href={(l) => `/licencas/${l.prefixo}`}
+      rotulo={(l) => `Licença ${l.prefixo}…, ${l.cliente.nome}, ${l.produto.nome}`}
+    />
+  );
 }

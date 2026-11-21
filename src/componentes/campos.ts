@@ -1,6 +1,9 @@
 // Estilos de campo de formulário do painel. Funciona no servidor e no cliente.
 
-/** Rótulo com o campo embaixo: <label className={CLASSE_ROTULO}>Texto<input className={CLASSE_CAMPO} /></label>. */
+/**
+ * Rótulo do campo: envolvendo o campo (<label className={CLASSE_ROTULO}>Texto<input /></label>)
+ * ou ligado a ele por htmlFor, como em `Campo` (formulario.tsx).
+ */
 export const CLASSE_ROTULO = "grid gap-1.5 text-sm font-medium";
 
 export const CLASSE_CAMPO =

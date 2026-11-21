@@ -44,13 +44,11 @@ export function descreverPrazo(validaAte: Date, agora: Date): string {
 }
 
 /**
- * O prazo da Licença numa palavra ou frase, para as listas: "vence em 4 dias", "venceu há
- * 3 dias", "perpétua", ou "suspensa" e "revogada", em que a data de validade não é o que
- * importa agora.
+ * O prazo da Licença para as listas: "vence em 4 dias", "venceu há 3 dias", "perpétua", ou
+ * "suspensa", em que a data de validade não é o que importa agora.
  */
 export function descreverPrazoDaLicenca(licenca: Pick<Licenca, "estado" | "validaAte">, agora: Date): string {
   if (licenca.estado === "Suspensa") return "suspensa";
-  if (licenca.estado === "Revogada") return "revogada";
   return licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "perpétua";
 }
 
