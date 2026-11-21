@@ -13,11 +13,16 @@ import { consultarLicencasEmUso, paraEvento, paraLicenca, type EventoLicenca, ty
 // as a vencer e as Suspensas; a Revogada nunca entra (calcularSituacao nunca a dá
 // como a vencer nem em Carência).
 
-/** Grupo da Licença na ordem de "pede atenção" (0 vem primeiro), ou null se ela não pede atenção. */
+/** Os grupos de "pede atenção", na ordem em que aparecem. */
+const EM_CARENCIA = 0;
+const A_VENCER = 1;
+const SUSPENSA = 2;
+
+/** Grupo da Licença na ordem de "pede atenção", ou null se ela não pede atenção. */
 function grupoDeAtencao(licenca: SituacaoLicenca): number | null {
-  if (licenca.emCarencia) return 0;
-  if (licenca.aVencer) return 1;
-  if (licenca.estado === "Suspensa") return 2;
+  if (licenca.emCarencia) return EM_CARENCIA;
+  if (licenca.aVencer) return A_VENCER;
+  if (licenca.estado === "Suspensa") return SUSPENSA;
   return null;
 }
 
@@ -30,7 +35,7 @@ function pedeAtencao(licenca: SituacaoLicenca): boolean {
  * Só as Licenças que pedem atenção, na ordem em que o Administrador deve olhá-las: em
  * Carência, da data de validade mais antiga para a mais nova; depois as a vencer, da
  * mais próxima para a mais distante; por fim as Suspensas, da emitida mais recentemente
- * para a mais antiga, como na lista de Licenças.
+ * para a mais antiga (o spec não fixa a ordem delas; esta só a torna estável).
  */
 function emOrdemDeAtencao(licencas: Licenca[]): Licenca[] {
   return licencas
@@ -40,15 +45,17 @@ function emOrdemDeAtencao(licencas: Licenca[]): Licenca[] {
       const diferenca = grupo - grupoDeAtencao(b)!;
       if (diferenca !== 0) return diferenca;
       // Em Carência e a vencer sempre têm data de validade.
-      if (grupo !== 2) return a.validaAte!.getTime() - b.validaAte!.getTime();
-      return b.emitidaEm.getTime() - a.emitidaEm.getTime() || b.prefixo.localeCompare(a.prefixo);
+      const ordem =
+        grupo === SUSPENSA ? b.emitidaEm.getTime() - a.emitidaEm.getTime() : a.validaAte!.getTime() - b.validaAte!.getTime();
+      // Desempate só para a ordem não variar de uma consulta para outra.
+      return ordem || a.prefixo.localeCompare(b.prefixo);
     });
 }
 
 /** Um evento do histórico na atividade recente, com a Licença em que aconteceu. */
 export interface AtividadeRecente {
   evento: EventoLicenca;
-  licenca: { prefixo: string; produto: { identificador: string; nome: string }; cliente: { id: number; nome: string } };
+  licenca: Pick<Licenca, "prefixo" | "produto"> & { cliente: Pick<Licenca["cliente"], "id" | "nome"> };
 }
 
 /** Quantos eventos a atividade recente traz quando não se pede outro número. */
