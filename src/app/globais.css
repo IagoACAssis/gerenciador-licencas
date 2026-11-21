@@ -39,7 +39,8 @@
  * Contraste WCAG AA conferido (texto normal, 4,5:1) para tinta, suave e acento sobre
  * fundo, superfície e elevada, sobre-acento sobre acento e cada semântica sobre a sua
  * versão suave, nos dois temas. O alerta claro saiu de #a16207 (4,42:1 sobre
- * alerta-suave) para #965b06 (4,97:1).
+ * alerta-suave) para #965b06 (4,97:1). O contorno dos campos (suave a 80%, campos.ts)
+ * fica acima de 3:1 sobre superfície e elevada nos dois temas (3,38:1 no pior caso).
  */
 :root {
   color-scheme: light;
