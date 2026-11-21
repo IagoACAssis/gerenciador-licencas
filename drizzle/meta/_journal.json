@@ -15,6 +15,13 @@
       "when": 1795227131641,
       "tag": "0001_produtos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795227517665,
+      "tag": "0002_clientes",
+      "breakpoints": true
     }
   ]
 }

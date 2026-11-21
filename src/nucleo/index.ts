@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { Banco } from "../banco/conexao.ts";
+import { casosDeUsoDeClientes } from "./clientes.ts";
 import { casosDeUsoDeProdutos } from "./produtos.ts";
 
 export {
@@ -10,6 +11,14 @@ export {
   type Produto,
   type RegrasProduto,
 } from "./produtos.ts";
+
+export {
+  ClienteNaoEncontrado,
+  DadosDeClienteInvalidos,
+  type Cliente,
+  type DadosDoCliente,
+  type ErrosDoCliente,
+} from "./clientes.ts";
 
 export interface Relogio {
   agora(): Date;
@@ -40,6 +49,7 @@ export function criarNucleo(dependencias: DependenciasNucleo) {
       return { banco: "ok", verificadaEm: relogio.agora() };
     },
     ...casosDeUsoDeProdutos(dependencias),
+    ...casosDeUsoDeClientes(dependencias),
   };
 }
 
