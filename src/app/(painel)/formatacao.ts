@@ -49,12 +49,18 @@ export function descreverPrazo(validaAte: Date, agora: Date): string {
 }
 
 /**
- * O prazo da Licença para as listas: "vence em 4 dias", "venceu há 3 dias", "perpétua", ou
- * "suspensa", em que a data de validade não é o que importa agora.
+ * O prazo da Licença: "vence em 4 dias", "venceu há 3 dias", "sem data de validade" (a
+ * perpétua), ou "suspensa", em que a data de validade não é o que importa agora. Com
+ * `prazoDaSuspensa`, a Suspensa mostra o prazo da data como as outras: serve onde a
+ * suspensão já está à vista, como no resumo (Pede atenção) e no detalhe da Licença.
  */
-export function descreverPrazoDaLicenca(licenca: Pick<Licenca, "estado" | "validaAte">, agora: Date): string {
-  if (licenca.estado === "Suspensa") return "suspensa";
-  return licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "perpétua";
+export function descreverPrazoDaLicenca(
+  licenca: Pick<Licenca, "estado" | "validaAte">,
+  agora: Date,
+  { prazoDaSuspensa = false }: { prazoDaSuspensa?: boolean } = {},
+): string {
+  if (licenca.estado === "Suspensa" && !prazoDaSuspensa) return "suspensa";
+  return licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "sem data de validade";
 }
 
 /** Há quanto tempo, em linguagem direta: "hoje", "ontem", "há 5 dias", "há 2 meses", "há 1 ano". */

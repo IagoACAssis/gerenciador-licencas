@@ -1,8 +1,12 @@
-// Padrão de lista do painel: tabela com linhas que levam ao detalhe, barra de filtros
-// e lista vazia com orientação. Funciona no servidor e no cliente.
+// Padrão de lista do painel: tabela com linhas que levam ao detalhe, tabela com ações
+// nas linhas, barra de filtros e lista vazia com orientação. Funciona no servidor e no cliente.
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { classeBotao } from "./botoes";
+
+const CLASSE_CONTEINER_DA_TABELA = "overflow-x-auto rounded-xl border bg-superficie";
+const CLASSE_CABECALHO_DA_TABELA = "bg-elevada/60 text-left text-xs text-suave";
+const CLASSE_TITULO_DA_COLUNA = "px-4 py-2.5 font-medium whitespace-nowrap";
 
 export interface Coluna<T> {
   titulo: string;
@@ -27,12 +31,12 @@ export function Tabela<T>({ colunas, itens, chave, href, rotulo }: {
 }) {
   const [principal, ...demais] = colunas;
   return (
-    <div className="animate-entrar overflow-x-auto rounded-xl border bg-superficie [animation-delay:60ms]">
+    <div className={`animate-entrar [animation-delay:60ms] ${CLASSE_CONTEINER_DA_TABELA}`}>
       <table className="w-full text-sm">
-        <thead className="bg-elevada/60 text-left text-xs text-suave">
+        <thead className={CLASSE_CABECALHO_DA_TABELA}>
           <tr>
             {colunas.map((coluna) => (
-              <th key={coluna.titulo} scope="col" className={`px-4 py-2.5 font-medium whitespace-nowrap ${coluna.classe ?? ""}`}>
+              <th key={coluna.titulo} scope="col" className={`${CLASSE_TITULO_DA_COLUNA} ${coluna.classe ?? ""}`}>
                 {coluna.titulo}
               </th>
             ))}
@@ -62,13 +66,52 @@ export function Tabela<T>({ colunas, itens, chave, href, rotulo }: {
 }
 
 /**
- * No lugar de uma tabela vazia: diz o que aconteceu e o que fazer. Serve para a lista
- * sem nenhum item ("Nenhum Cliente ainda") e para o filtro sem resultado.
+ * Tabela em que as linhas têm botões próprios (Renovar, Remover, Restaurar), em vez de
+ * levar ao detalhe como a `Tabela`: o mesmo contêiner e o mesmo cabeçalho. As linhas
+ * (`<tr>`, células com `px-4 py-3`) vêm em `children`; `acao` dá nome, para o leitor de
+ * tela, à última coluna, a dos botões. Sem `acao`, serve também para a tabela só de
+ * leitura que não leva a detalhe nenhum (as Substituições de ativação).
  */
-export function EstadoVazio({ titulo, children, acao }: { titulo: string; children?: ReactNode; acao?: ReactNode }) {
+export function TabelaComAcoes({ colunas, acao, children }: { colunas: string[]; acao?: string; children: ReactNode }) {
   return (
-    <div className="grid animate-entrar justify-items-center gap-2 rounded-xl border border-dashed bg-superficie px-6 py-12 text-center [animation-delay:60ms]">
-      <p className="text-base font-medium">{titulo}</p>
+    <div className={CLASSE_CONTEINER_DA_TABELA}>
+      <table className="w-full text-sm">
+        <thead className={CLASSE_CABECALHO_DA_TABELA}>
+          <tr>
+            {colunas.map((coluna) => (
+              <th key={coluna} scope="col" className={CLASSE_TITULO_DA_COLUNA}>{coluna}</th>
+            ))}
+            {acao && <th scope="col" className="px-4 py-2.5"><span className="sr-only">{acao}</span></th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-borda">{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Classe das linhas da `TabelaComAcoes`. */
+export const CLASSE_LINHA_COM_ACOES = "transition-colors duration-150 hover:bg-elevada/60";
+
+/**
+ * No lugar de uma tabela vazia: diz o que aconteceu e o que fazer. Serve para a lista
+ * sem nenhum item ("Nenhum Cliente ainda") e para o filtro sem resultado. `compacto` é
+ * para a lista que é uma seção de uma página maior (Pede atenção, Ativações): menos
+ * espaço e sem animação própria, porque a seção já entra animada.
+ */
+export function EstadoVazio({ titulo, children, acao, compacto = false }: {
+  titulo: string;
+  children?: ReactNode;
+  acao?: ReactNode;
+  compacto?: boolean;
+}) {
+  return (
+    <div
+      className={`grid justify-items-center gap-2 rounded-xl border border-dashed bg-superficie text-center ${
+        compacto ? "px-5 py-8" : "animate-entrar px-6 py-12 [animation-delay:60ms]"
+      }`}
+    >
+      <p className={compacto ? "text-sm font-medium" : "text-base font-medium"}>{titulo}</p>
       {children && <p className="max-w-md text-sm leading-relaxed text-suave">{children}</p>}
       {acao && <div className="mt-3 flex flex-wrap justify-center gap-2">{acao}</div>}
     </div>

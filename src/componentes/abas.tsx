@@ -1,6 +1,15 @@
 "use client";
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
+/**
+ * O sublinhado da aba atual, que cresce do centro quando ela passa a ser a atual. Fica num
+ * `<span>` dentro da aba (com `relative`); quem usa diz a largura com `inset-x-*`. Também
+ * serve à navegação do topo do painel.
+ */
+export function classeDoSublinhado(atual: boolean): string {
+  return `absolute bottom-0 h-0.5 rounded-full bg-acento transition-transform duration-200 ${atual ? "scale-x-100" : "scale-x-0"}`;
+}
+
 export interface Aba {
   /** Identifica a aba dentro do grupo; vira parte do id do elemento. */
   id: string;
@@ -58,12 +67,7 @@ export function Abas({ abas, rotulo }: { abas: Aba[]; rotulo: string }) {
               }`}
             >
               {aba.rotulo}
-              <span
-                aria-hidden="true"
-                className={`absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-acento transition-transform duration-200 ${
-                  selecionada ? "scale-x-100" : "scale-x-0"
-                }`}
-              />
+              <span aria-hidden="true" className={`inset-x-0 ${classeDoSublinhado(selecionada)}`} />
             </button>
           );
         })}

@@ -6,7 +6,9 @@ import { FormularioCliente } from "../../formulario";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const cliente = await obterClienteDaRota((await params).id);
-  return { title: cliente && `Editar ${cliente.nome}` };
+  // Item inexistente: o título vem do not-found.tsx, como a página.
+  if (!cliente) notFound();
+  return { title: `Editar ${cliente.nome}` };
 }
 
 export default async function EditarCliente({ params }: { params: Promise<{ id: string }> }) {

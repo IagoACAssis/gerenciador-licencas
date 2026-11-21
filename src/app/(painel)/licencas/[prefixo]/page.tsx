@@ -8,18 +8,18 @@ import { Abas } from "@/componentes/abas";
 import { BotaoCopiar } from "@/componentes/botao-copiar";
 import { CLASSE_AJUDA, CLASSE_CAMPO, CLASSE_ROTULO } from "@/componentes/campos";
 import { DialogoDeConfirmacao } from "@/componentes/dialogo-de-confirmacao";
+import { CLASSE_LINHA_COM_ACOES, EstadoVazio, TabelaComAcoes } from "@/componentes/lista";
 import { FaixaDeFatos, LinkDeVolta, type Fato } from "@/componentes/pagina";
 import { SeloDeEstado } from "@/componentes/selo-de-estado";
-import { descreverPrazo, formatarData, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
+import { descreverPrazoDaLicenca, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
 import {
   alterarLimiteDeAtivacoes,
-  reativarLicenca,
   removerAtivacao,
-  renovarLicenca,
   revogarLicenca,
   suspenderLicenca,
   zerarContagemDeSubstituicoes,
 } from "../acoes";
+import { DialogoReativar, DialogoRenovar } from "../dialogos-de-ciclo-de-vida";
 import { descreverEvento } from "../eventos";
 import { excluirLicenca } from "../../excluidos/acoes";
 import { AreaDaTrocaDeChave, BotaoTrocarChave } from "./troca-de-chave";
@@ -31,7 +31,9 @@ const obterLicenca = cache((prefixo: string) => nucleoDaInstancia().obterLicenca
 
 export async function generateMetadata({ params }: { params: Promise<{ prefixo: string }> }): Promise<Metadata> {
   const licenca = await obterLicenca((await params).prefixo);
-  return { title: licenca && `Licença ${licenca.prefixo}…` };
+  // Item inexistente: o título vem do not-found.tsx, como a página.
+  if (!licenca) notFound();
+  return { title: `Licença ${licenca.prefixo}…` };
 }
 
 const DESCRICAO_DA_EXCLUSAO =
@@ -120,22 +122,7 @@ function AcoesDeCicloDeVida({ licenca }: { licenca: DetalheLicenca }) {
   const campos = { prefixo: licenca.prefixo };
   return (
     <div className="flex flex-wrap gap-2">
-      {licenca.validaAte && (
-        <DialogoDeConfirmacao
-          rotulo="Renovar"
-          estilo="primario"
-          titulo={`Renovar a Licença ${licenca.prefixo}…`}
-          descricao={`Muda só a data de validade, hoje ${formatarData(licenca.validaAte)}. A Chave de licença e as Ativações continuam as mesmas.`}
-          confirmar="Renovar"
-          acao={renovarLicenca}
-          campos={campos}
-        >
-          <label className={CLASSE_ROTULO}>
-            Nova data de validade
-            <input name="validaAte" type="date" required className={CLASSE_CAMPO} />
-          </label>
-        </DialogoDeConfirmacao>
-      )}
+      {licenca.validaAte && <DialogoRenovar prefixo={licenca.prefixo} validaAte={licenca.validaAte} />}
       <DialogoDeConfirmacao
         rotulo="Alterar limite de ativações"
         titulo="Alterar o Limite de ativações"
@@ -159,14 +146,7 @@ function AcoesDeCicloDeVida({ licenca }: { licenca: DetalheLicenca }) {
         </label>
       </DialogoDeConfirmacao>
       {licenca.estado === "Suspensa" ? (
-        <DialogoDeConfirmacao
-          rotulo="Reativar"
-          titulo={`Reativar a Licença ${licenca.prefixo}…?`}
-          descricao="As Ativações voltam a valer."
-          confirmar="Reativar"
-          acao={reativarLicenca}
-          campos={campos}
-        />
+        <DialogoReativar prefixo={licenca.prefixo} />
       ) : (
         <DialogoDeConfirmacao
           rotulo="Suspender"
@@ -211,7 +191,7 @@ function FatosDaLicenca({ licenca, agora }: { licenca: DetalheLicenca; agora: Da
     {
       rotulo: "Data de validade",
       valor: formatarValidade(licenca.validaAte),
-      detalhe: licenca.validaAte ? descreverPrazo(licenca.validaAte, agora) : "sem data de validade",
+      detalhe: descreverPrazoDaLicenca(licenca, agora, { prazoDaSuspensa: true }),
     },
     {
       rotulo: "Ativações",
@@ -234,48 +214,36 @@ function AbaAtivacoes({ licenca, agora }: { licenca: DetalheLicenca; agora: Date
   return (
     <div className="grid gap-8">
       {licenca.ativacoes.length === 0 ? (
-        <p className="rounded-xl border border-dashed px-5 py-8 text-center text-sm text-suave">
-          Nenhuma Ativação ainda. Ela é criada na primeira Validação num Dispositivo.
-        </p>
+        <EstadoVazio titulo="Nenhuma Ativação ainda" compacto>
+          Ela é criada na primeira Validação num Dispositivo.
+        </EstadoVazio>
       ) : (
-        <div className="overflow-x-auto rounded-xl border bg-superficie">
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-suave">
-              <tr className="border-b">
-                <th scope="col" className="px-4 py-2.5 font-medium">Dispositivo</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Ativada</th>
-                <th scope="col" className="px-4 py-2.5 font-medium">Última Validação</th>
-                <th scope="col" className="px-4 py-2.5"><span className="sr-only">Ações</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-borda">
-              {licenca.ativacoes.map((ativacao) => (
-                <tr key={ativacao.dispositivo} className="transition-colors duration-150 hover:bg-elevada/50">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{ativacao.nomeDispositivo ?? "Sem nome"}</div>
-                    <code className="font-mono text-xs break-all text-suave">{ativacao.dispositivo}</code>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-suave"><Quando data={ativacao.ativadaEm} agora={agora} /></td>
-                  <td className="px-4 py-3 whitespace-nowrap text-suave">
-                    <Quando data={ativacao.ultimaValidacaoEm} agora={agora} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <DialogoDeConfirmacao
-                      rotulo="Remover"
-                      estilo="fantasma"
-                      titulo="Remover esta Ativação?"
-                      descricao={`Libera a vaga de ${ativacao.nomeDispositivo ?? ativacao.dispositivo}. Remover uma Ativação não gasta a Cota de substituições.`}
-                      confirmar="Remover Ativação"
-                      perigoso
-                      acao={removerAtivacao}
-                      campos={{ prefixo: licenca.prefixo, dispositivo: ativacao.dispositivo }}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TabelaComAcoes colunas={["Dispositivo", "Ativada", "Última Validação"]} acao="Ações">
+          {licenca.ativacoes.map((ativacao) => (
+            <tr key={ativacao.dispositivo} className={CLASSE_LINHA_COM_ACOES}>
+              <td className="px-4 py-3">
+                <div className="font-medium">{ativacao.nomeDispositivo ?? "Sem nome"}</div>
+                <code className="font-mono text-xs break-all text-suave">{ativacao.dispositivo}</code>
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-suave"><Quando data={ativacao.ativadaEm} agora={agora} /></td>
+              <td className="px-4 py-3 whitespace-nowrap text-suave">
+                <Quando data={ativacao.ultimaValidacaoEm} agora={agora} />
+              </td>
+              <td className="px-4 py-3 text-right">
+                <DialogoDeConfirmacao
+                  rotulo="Remover"
+                  estilo="fantasma"
+                  titulo="Remover esta Ativação?"
+                  descricao={`Libera a vaga de ${ativacao.nomeDispositivo ?? ativacao.dispositivo}. Remover uma Ativação não gasta a Cota de substituições.`}
+                  confirmar="Remover Ativação"
+                  perigoso
+                  acao={removerAtivacao}
+                  campos={{ prefixo: licenca.prefixo, dispositivo: ativacao.dispositivo }}
+                />
+              </td>
+            </tr>
+          ))}
+        </TabelaComAcoes>
       )}
       <CotaDeSubstituicoes licenca={licenca} />
       {licenca.substituicoes.length > 0 && <Substituicoes licenca={licenca} />}
@@ -336,26 +304,15 @@ function Substituicoes({ licenca }: { licenca: DetalheLicenca }) {
   return (
     <section className="grid gap-3" aria-labelledby="substituicoes-titulo">
       <h2 id="substituicoes-titulo" className="text-sm font-medium">Substituições de ativação feitas</h2>
-      <div className="overflow-x-auto rounded-xl border bg-superficie">
-        <table className="w-full text-sm">
-          <thead className="text-left text-xs text-suave">
-            <tr className="border-b">
-              <th scope="col" className="px-4 py-2.5 font-medium">Feita em</th>
-              <th scope="col" className="px-4 py-2.5 font-medium">Dispositivo removido</th>
-              <th scope="col" className="px-4 py-2.5 font-medium">Dispositivo novo</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-borda">
-            {licenca.substituicoes.map((substituicao, i) => (
-              <tr key={i}>
-                <td className="px-4 py-3 whitespace-nowrap">{formatarDataHora(substituicao.feitaEm)}</td>
-                <td className="px-4 py-3"><code className="font-mono text-xs break-all">{substituicao.dispositivoRemovido}</code></td>
-                <td className="px-4 py-3"><code className="font-mono text-xs break-all">{substituicao.dispositivoNovo}</code></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <TabelaComAcoes colunas={["Feita em", "Dispositivo removido", "Dispositivo novo"]}>
+        {licenca.substituicoes.map((substituicao, i) => (
+          <tr key={i}>
+            <td className="px-4 py-3 whitespace-nowrap">{formatarDataHora(substituicao.feitaEm)}</td>
+            <td className="px-4 py-3"><code className="font-mono text-xs break-all">{substituicao.dispositivoRemovido}</code></td>
+            <td className="px-4 py-3"><code className="font-mono text-xs break-all">{substituicao.dispositivoNovo}</code></td>
+          </tr>
+        ))}
+      </TabelaComAcoes>
     </section>
   );
 }
