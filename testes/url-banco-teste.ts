@@ -1,9 +1,6 @@
+/** Usuário e banco criados por docker/criar-banco-teste.sql; DATABASE_URL_TESTE sobrescreve. */
+const URL_PADRAO = "postgres://teste:teste@localhost:5432/licencas_teste";
+
 export function urlBancoTeste(): string {
-  const url = process.env.DATABASE_URL_TESTE;
-  if (!url) {
-    throw new Error(
-      "Defina DATABASE_URL_TESTE (veja o README) e suba o Postgres com `docker compose up -d postgres`.",
-    );
-  }
-  return url;
+  return process.env.DATABASE_URL_TESTE || URL_PADRAO;
 }

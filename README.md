@@ -73,16 +73,20 @@ Sobre o limite de requisições:
 ```sh
 docker compose up -d postgres   # com o override: Postgres exposto e com os bancos licencas e licencas_teste
 export DATABASE_URL=postgres://licencas:<senha>@localhost:5432/licencas
-export DATABASE_URL_TESTE=postgres://licencas:<senha>@localhost:5432/licencas_teste
 pnpm db:migrar                  # aplica as migrações no banco de desenvolvimento
 pnpm dev                        # também precisa de ADMIN_USUARIO, ADMIN_SENHA_HASH, SESSAO_SEGREDO e CHAVES_SEGREDO
 ```
 
+- `pnpm verificar`: roda o type check, os testes e o build, na mesma ordem do CI. Rode antes de cada commit.
 - `pnpm typecheck`: confere os tipos.
-- `pnpm test`: roda os testes (Vitest) contra o Postgres real no banco `licencas_teste`, que é limpo antes de cada teste.
+- `pnpm test`: roda os testes (Vitest) contra o Postgres real no banco `licencas_teste`, que é limpo antes de cada teste. Não precisa de variável: o banco de teste tem um usuário próprio, `teste` com senha `teste`, que só existe em desenvolvimento e no CI. Para usar outro banco, defina `DATABASE_URL_TESTE`.
 - `pnpm db:gerar`: gera a migração SQL depois de uma mudança em `src/banco/esquema.ts`. Faça commit da migração gerada, em `drizzle/`.
 
-O banco `licencas_teste` é criado na primeira inicialização do volume do Postgres. Se o volume já existia antes, crie-o à mão: `docker compose exec postgres createdb -U licencas licencas_teste`.
+O banco `licencas_teste` e o usuário `teste` são criados na primeira inicialização do volume do Postgres, por `docker/criar-banco-teste.sql`. Se o volume já existia antes, rode o script à mão uma vez (ele falha se o usuário ou o banco já existirem; nesse caso, apague o banco `licencas_teste` antes, já que ele é descartável):
+
+```sh
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres' < docker/criar-banco-teste.sql
+```
 
 ### Estrutura
 

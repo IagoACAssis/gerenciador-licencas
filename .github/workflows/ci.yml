@@ -1,0 +1,35 @@
+# Roda em todo push e pull request: type check, testes contra Postgres real e build.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        # Mesmo usuário e banco de teste de docker/criar-banco-teste.sql.
+        env:
+          POSTGRES_USER: teste
+          POSTGRES_PASSWORD: teste
+          POSTGRES_DB: licencas_teste
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U teste -d licencas_teste"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      # Versão do pnpm lida do campo packageManager do package.json.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verificar
