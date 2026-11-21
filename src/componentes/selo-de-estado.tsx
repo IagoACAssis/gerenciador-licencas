@@ -27,6 +27,14 @@ const CLASSES_DO_TOM: Record<Tom, string> = {
   neutro: "bg-elevada text-suave",
 };
 
+/** A cor cheia do tom, para pontos e barras que acompanham o texto de um estado. */
+export const COR_DO_TOM: Record<Tom, string> = {
+  ok: "bg-ok",
+  alerta: "bg-alerta",
+  perigo: "bg-perigo",
+  neutro: "bg-suave",
+};
+
 /** O estado da Licença como selo: sempre texto e cor juntos. */
 export function SeloDeEstado({ licenca }: { licenca: Pick<Licenca, "estado" | "aVencer" | "emCarencia"> }) {
   const { texto, tom } = situacaoDaLicenca(licenca);

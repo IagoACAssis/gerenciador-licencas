@@ -9,16 +9,15 @@ import { BotaoCopiar } from "@/componentes/botao-copiar";
 import { CLASSE_AJUDA, CLASSE_CAMPO, CLASSE_ROTULO } from "@/componentes/campos";
 import { DialogoDeConfirmacao } from "@/componentes/dialogo-de-confirmacao";
 import { SeloDeEstado } from "@/componentes/selo-de-estado";
-import { descreverPrazo, formatarData, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
+import { descreverPrazo, formatarDataHora, formatarValidade, haQuantoTempo } from "../../formatacao";
 import {
   alterarLimiteDeAtivacoes,
-  reativarLicenca,
   removerAtivacao,
-  renovarLicenca,
   revogarLicenca,
   suspenderLicenca,
   zerarContagemDeSubstituicoes,
 } from "../acoes";
+import { DialogoReativar, DialogoRenovar } from "../dialogos-de-ciclo-de-vida";
 import { descreverEvento } from "../eventos";
 import { excluirLicenca } from "../../excluidos/acoes";
 import { AreaDaTrocaDeChave, BotaoTrocarChave } from "./troca-de-chave";
@@ -121,22 +120,7 @@ function AcoesDeCicloDeVida({ licenca }: { licenca: DetalheLicenca }) {
   const campos = { prefixo: licenca.prefixo };
   return (
     <div className="flex flex-wrap gap-2">
-      {licenca.validaAte && (
-        <DialogoDeConfirmacao
-          rotulo="Renovar"
-          estilo="primario"
-          titulo={`Renovar a Licença ${licenca.prefixo}…`}
-          descricao={`Muda só a data de validade, hoje ${formatarData(licenca.validaAte)}. A Chave de licença e as Ativações continuam as mesmas.`}
-          confirmar="Renovar"
-          acao={renovarLicenca}
-          campos={campos}
-        >
-          <label className={CLASSE_ROTULO}>
-            Nova data de validade
-            <input name="validaAte" type="date" required className={CLASSE_CAMPO} />
-          </label>
-        </DialogoDeConfirmacao>
-      )}
+      {licenca.validaAte && <DialogoRenovar prefixo={licenca.prefixo} validaAte={licenca.validaAte} />}
       <DialogoDeConfirmacao
         rotulo="Alterar limite de ativações"
         titulo="Alterar o Limite de ativações"
@@ -160,14 +144,7 @@ function AcoesDeCicloDeVida({ licenca }: { licenca: DetalheLicenca }) {
         </label>
       </DialogoDeConfirmacao>
       {licenca.estado === "Suspensa" ? (
-        <DialogoDeConfirmacao
-          rotulo="Reativar"
-          titulo={`Reativar a Licença ${licenca.prefixo}…?`}
-          descricao="As Ativações voltam a valer."
-          confirmar="Reativar"
-          acao={reativarLicenca}
-          campos={campos}
-        />
+        <DialogoReativar prefixo={licenca.prefixo} />
       ) : (
         <DialogoDeConfirmacao
           rotulo="Suspender"
