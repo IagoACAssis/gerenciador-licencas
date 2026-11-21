@@ -1,0 +1,3 @@
+# Instância auto-hospedada, sem multi-tenant
+
+O Gerenciador de Licenças é open source e cada pessoa hospeda a própria Instância, com banco de dados próprio e um único Administrador. Uma Instância não serve vários donos de Produtos isolados entre si. O caminho óbvio seria um serviço multi-tenant ("licenças como serviço"), mas o objetivo é que cada um controle a sua infraestrutura e os seus dados. Além disso, o modelo sem tenant mantém o domínio e o código mais simples, e o projeto também é portfólio. Por isso não existe nenhum identificador de tenant nos dados. Virar multi-tenant depois exigiria revisar todo o modelo.
